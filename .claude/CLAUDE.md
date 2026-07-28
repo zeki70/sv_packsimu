@@ -19,7 +19,7 @@ GitHub Pages で静的ホスティングする。サーバーサイドは持た�
 | Testing    | Vitest                  | 排出ロジック・デッキ検証はユニットテスト必須 |
 | Hosting    | GitHub Pages            | 公開リポジトリ。バックエンド無し（Supabase は使わない） |
 
-> 実装はこれから。`package.json` はまだ存在しない。
+> 実装済み。ドメイン層は Vitest でカバー済み。
 
 ## 参考実装（`C:\Users\hp\Desktop\folder\programing\app\シャドバ\`）
 
@@ -29,7 +29,7 @@ GitHub Pages で静的ホスティングする。サーバーサイドは持た�
 |---|---|
 | `shadowverse-scraper/fetch_all_cards.js` | カードDBの**生成・更新**。公式サイトを Puppeteer で叩き `all_cards_master.json` を出力 |
 | `shadowverse-scraper/download_images.js` | カード画像の一括ダウンロード |
-| `shadowverse-scraper/data/all_cards_master.json` | カードDB本体（1.7MB / 740枚 / 2026-04-28時点） |
+| `shadowverse-scraper/data/all_cards_master.json` | カードDB本体（トークン込み826枚）。`npm run sync:cards` の入力 |
 | `shadowverse-emulator/src/data/CardDatabase.ts` | カード型定義（`SVCardData` / `SVCardEntry`）と lookup。**型はここからそのまま流用する** |
 | `shadowverse-emulator/src/components/DeckBuilder.tsx` | **デッキメーカーの土台**（1007行）。クラス選択・フィルタ・枚数管理・保存 |
 | `shadowverse-emulator/scripts/syncCardData.ts` | pack JSON → master JSON のマージ処理 |
@@ -82,7 +82,8 @@ SVCardEntry = { common: SVCardData, evo?: SVEvoData, specific_effects?: Specific
 
 ### カードプール生成
 
-- **既定: 最新6弾 × 各8パック = 48パック**（= 384枚）
+- **既定: 最新6弾 × 各10パック = 60パック**（= 480枚）
+  - 10 にしているのは天井（10パック目で確定）と揃えるため。どの弾からも最低1枚レジェンドが手に入る
 - 対象弾・パック数は**ユーザーが変更できる**
 - **ベーシック（10000）の利用可否をユーザーが選べる**。有効時はベーシック56枚を**プールに常時追加**する
   （ベーシックはパック排出ではなく全プレイヤーが初期所持しているため、開封ではなく無償追加として扱う）
@@ -97,7 +98,9 @@ SVCardEntry = { common: SVCardData, evo?: SVEvoData, specific_effects?: Specific
 - **プレミアム版は扱わない**。見た目だけの違いでデッキ構築に影響しないため、ドメインから除外している
 - クラスを変更するとデッキは破棄する（確認ダイアログあり）。持ち越すと不正なデッキが残るため
 
-> 48パックなら 1クラス+ニュートラルで約86枚が手に入る計算（非トークン全体のクラス構成はニュートラル約9%・各クラス約13%＝合計約22%）。40枚デッキを組むのに十分な余裕がある。
+> 実測（20回平均）: 60パック＝480枚を開くと、1クラス+ニュートラルで**投入可能 約92枚**（最少71枚）。
+> 40枚デッキに十分な余裕がある。単純なクラス比（約22%）から計算すると106枚だが、
+> 同名4枚目以降が3枚上限で切り捨てられるぶん実際はこれより少なくなる。
 
 ## 排出率（`排出率画像/` から転記）
 
@@ -179,8 +182,8 @@ sv_packsimu/
 │   │   └── cardDatabase.ts ← lookup / SetCardIndex 構築 / 最新弾の解決
 │   ├── session/
 │   │   └── sealedSession.ts ← シード＋設定の保存。プールは毎回再生成する
-│   ├── components/       ← SealedSetup / PoolView / DeckBuilder / CardImage
-│   ├── ui/labels.ts      ← クラス名・タイプ名・レアリティ表示
+│   ├── components/       ← SealedSetup / PoolView / DeckBuilder / DeckPreviewModal / CardImage
+│   ├── ui/               ← labels.ts（表示名）/ poolSort.ts（並び替え・絞り込み）
 │   ├── App.tsx           ← setup → pool → deck のビュー遷移
 │   └── styles.css
 └── .claude/
@@ -194,7 +197,7 @@ npm run dev          # Vite dev server
 npm run build        # tsc --noEmit && vite build
 npm run preview
 npm run typecheck
-npm test             # Vitest（55テスト）
+npm test             # Vitest（66テスト）
 
 npm run sync:cards   # scraper の all_cards_master.json → src/data/cards.json
 npm run sync:images  # scraper の原寸PNG → public/cards/*.webp
@@ -213,7 +216,7 @@ npm run sync:cards && npm run sync:images
 ## 状態管理
 
 カードプールは**保存しない**。`{ seed, config }` だけを localStorage に持ち、
-`buildPoolFor()` で毎回決定論的に再生成する。384枚を保存する必要がなく、
+`buildPoolFor()` で毎回決定論的に再生成する。開封した全カードを保存する必要がなく、
 シードを共有すれば同じプールを他人と再現できる。
 
 - `sv_packsimu_session` — シードと開封設定
@@ -227,7 +230,7 @@ npm run sync:cards && npm run sync:images
 - 1パックちょうど8枚、8枚目はシルバー以上（ブロンズが出たらバグ）
 - 天井カウントが弾ごとに独立（`pityBySet` が弾ごとにエントリを持つ）
 - 10パック以内に必ずレジェンドが出る
-- 既定設定（48パック）で全7クラスが実際に40枚デッキを組める
+- 既定設定（60パック）で全7クラスが実際に40枚デッキを組める
 
 > **排出率を測るテストでは天井を発動させないこと**（常に `pity=0` で開ける）。
 > 天井パックは「レジェンドが出なかったパック」だけなので、それを標本から除外すると

@@ -36,7 +36,7 @@ const BASIC_CARDS: readonly PoolCard[] = Array.from({ length: 56 }, (_, i) => ({
 const SIX_SETS = [10003, 10004, 10005, 10006, 10007, 10008];
 
 describe('buildPool', () => {
-  it('既定の 6弾×8パック で 384枚 開封される', () => {
+  it('6弾×8パック で 384枚 開封される', () => {
     const result = buildPool({
       indexes: SIX_SETS.map((id) => makeIndex(id)),
       packCounts: new Map(SIX_SETS.map((id) => [id, 8])),

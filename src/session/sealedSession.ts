@@ -8,8 +8,13 @@ import {
 
 /** 既定で対象にする弾数 */
 export const DEFAULT_SET_COUNT = 6;
-/** 既定の1弾あたりパック数 */
-export const DEFAULT_PACKS_PER_SET = 8;
+/**
+ * 既定の1弾あたりパック数。
+ *
+ * 10 にしてあるのは天井（9パック連続でレジェンド無し → 10パック目で確定）と
+ * 揃えるため。どの弾からも最低1枚はレジェンドが手に入る。
+ */
+export const DEFAULT_PACKS_PER_SET = 10;
 /** 1弾あたりに指定できるパック数の上限（開封演出とメモリの現実的な上限） */
 export const MAX_PACKS_PER_SET = 100;
 
@@ -55,7 +60,7 @@ export function createSession(config: SealedConfig, seed?: number): SealedSessio
 
 /**
  * セッションからカードプールを再生成する。
- * シードと設定さえ保存しておけば384枚を保存しなくても完全に再現できる。
+ * シードと設定さえ保存しておけば、開封した全カードを保存しなくても完全に再現できる。
  */
 export function buildPoolFor(session: SealedSession): BuildPoolResult {
   const { setIds, packCounts, includeBasic } = session.config;

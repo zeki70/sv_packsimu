@@ -14,7 +14,7 @@ import { latestPackSetIds } from '../data/cardDatabase';
 import { CLASSES } from '../ui/labels';
 
 describe('既定設定', () => {
-  it('最新6弾 × 8パック = 48パック', () => {
+  it('最新6弾 × 10パック = 60パック', () => {
     const config = defaultConfig();
     expect(config.setIds).toHaveLength(DEFAULT_SET_COUNT);
     expect(totalPackCount(config)).toBe(DEFAULT_SET_COUNT * DEFAULT_PACKS_PER_SET);
@@ -43,7 +43,7 @@ describe('シールド戦の通し検証（実カードデータ）', () => {
     expect(a.openedCards).not.toEqual(b.openedCards);
   });
 
-  it('既定設定で384枚開封される', () => {
+  it('既定設定で 60パック × 8枚 = 480枚 開封される', () => {
     const result = buildPoolFor(createSession(defaultConfig(), 777));
     expect(result.openedCards).toHaveLength(
       DEFAULT_SET_COUNT * DEFAULT_PACKS_PER_SET * CARDS_PER_PACK,

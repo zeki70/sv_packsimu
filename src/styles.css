@@ -294,7 +294,7 @@ input[type="number"] { width: 4.5rem; }
 
 .builder-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) 360px;
   gap: 1rem;
   align-items: start;
 }
@@ -345,14 +345,21 @@ input[type="number"] { width: 4.5rem; }
   font-size: .82rem;
 }
 
-/* エミュと同じく、カードの上部だけを切り出した細いサムネイル */
+/*
+ * デッキ行のサムネイル。
+ * カード画像(530x687)を縦5分割し、上から2番目の帯だけを使う。
+ *
+ * 帯の比率は 530 : (687/5) = 530 : 137.4。
+ * object-fit: cover で幅いっぱいに伸ばすと画像高さは要素高さの5倍になるので、
+ * 帯2の先頭（画像の20%地点）を出すためのオフセットは 20% / (100% - 20%) = 25%。
+ */
 .deck-thumb {
   flex: none;
-  width: 28px;
-  height: 36px;
-  aspect-ratio: auto;
+  width: 104px;
+  height: auto;
+  aspect-ratio: 530 / 137.4;
   object-fit: cover;
-  object-position: center 22%;
+  object-position: center 25%;
   border-radius: 3px;
 }
 
