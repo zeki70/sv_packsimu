@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import type { BuildPoolResult } from '../domain/pool';
-import { Rarity } from '../domain/types';
+import { Rarity, NEUTRAL_CLASS_ID } from '../domain/types';
 import { getCard, setName } from '../data/cardDatabase';
-import { RARITY_CLASS, RARITY_NAME, RARITY_ORDER, className } from '../ui/labels';
+import { CLASSES, RARITY_CLASS, RARITY_NAME, RARITY_ORDER, className } from '../ui/labels';
+import { SORT_MODE_LABELS, filterAndSortPool, type PoolSortMode } from '../ui/poolSort';
 import { CardImage } from './CardImage';
 
 interface Props {
@@ -11,28 +12,31 @@ interface Props {
   readonly onReset: () => void;
 }
 
+const costOf = (cardId: number): number => getCard(cardId)?.cost ?? 0;
+
 export function PoolView({ result, onBuildDeck, onReset }: Props) {
   const [rarityFilter, setRarityFilter] = useState<Rarity | null>(null);
+  const [classFilter, setClassFilter] = useState<number | null>(null);
+  const [sortMode, setSortMode] = useState<PoolSortMode>('cost');
 
   const stats = useMemo(() => {
     const byRarity = new Map<Rarity, number>();
-    let premium = 0;
     for (const card of result.openedCards) {
       byRarity.set(card.rarity, (byRarity.get(card.rarity) ?? 0) + 1);
-      if (card.premium) premium += 1;
     }
-    return { byRarity, premium, total: result.openedCards.length };
+    return { byRarity, total: result.openedCards.length };
   }, [result]);
 
-  const entries = useMemo(() => {
-    const list = [...result.pool.values()];
-    const filtered = rarityFilter === null ? list : list.filter((e) => e.card.rarity === rarityFilter);
-    return filtered.sort((a, b) => {
-      if (a.card.rarity !== b.card.rarity) return b.card.rarity - a.card.rarity;
-      if (a.card.classId !== b.card.classId) return a.card.classId - b.card.classId;
-      return a.card.cardId - b.card.cardId;
-    });
-  }, [result, rarityFilter]);
+  const entries = useMemo(
+    () =>
+      filterAndSortPool(
+        [...result.pool.values()],
+        { rarity: rarityFilter, classId: classFilter },
+        costOf,
+        sortMode,
+      ),
+    [result, rarityFilter, classFilter, sortMode],
+  );
 
   return (
     <section className="pool">
@@ -58,10 +62,6 @@ export function PoolView({ result, onBuildDeck, onReset }: Props) {
           </div>
         ))}
         <div className="stat">
-          <span className="stat-value">{stats.premium}</span>
-          <span className="stat-label">プレミアム</span>
-        </div>
-        <div className="stat">
           <span className="stat-value">{result.pool.size}</span>
           <span className="stat-label">種類</span>
         </div>
@@ -76,6 +76,45 @@ export function PoolView({ result, onBuildDeck, onReset }: Props) {
       </div>
 
       <div className="filter-row">
+        <span className="filter-label">並び順</span>
+        {(['cost', 'rarity'] as const).map((mode) => (
+          <button
+            key={mode}
+            className={sortMode === mode ? 'chip chip--on' : 'chip'}
+            onClick={() => setSortMode(mode)}
+          >
+            {SORT_MODE_LABELS[mode]}
+          </button>
+        ))}
+      </div>
+
+      <div className="filter-row">
+        <span className="filter-label">クラス</span>
+        <button
+          className={classFilter === null ? 'chip chip--on' : 'chip'}
+          onClick={() => setClassFilter(null)}
+        >
+          すべて
+        </button>
+        <button
+          className={classFilter === NEUTRAL_CLASS_ID ? 'chip chip--on' : 'chip'}
+          onClick={() => setClassFilter(classFilter === NEUTRAL_CLASS_ID ? null : NEUTRAL_CLASS_ID)}
+        >
+          ニュートラル
+        </button>
+        {CLASSES.map((cls) => (
+          <button
+            key={cls.id}
+            className={classFilter === cls.id ? 'chip chip--on' : 'chip'}
+            onClick={() => setClassFilter(classFilter === cls.id ? null : cls.id)}
+          >
+            {cls.name}
+          </button>
+        ))}
+      </div>
+
+      <div className="filter-row">
+        <span className="filter-label">レアリティ</span>
         <button
           className={rarityFilter === null ? 'chip chip--on' : 'chip'}
           onClick={() => setRarityFilter(null)}
@@ -86,12 +125,14 @@ export function PoolView({ result, onBuildDeck, onReset }: Props) {
           <button
             key={rarity}
             className={rarityFilter === rarity ? 'chip chip--on' : 'chip'}
-            onClick={() => setRarityFilter(rarity)}
+            onClick={() => setRarityFilter(rarityFilter === rarity ? null : rarity)}
           >
             {RARITY_NAME[rarity]}
           </button>
         ))}
       </div>
+
+      <p className="muted tiny">{entries.length} 種を表示中</p>
 
       <ul className="card-grid">
         {entries.map((entry) => {
@@ -100,12 +141,10 @@ export function PoolView({ result, onBuildDeck, onReset }: Props) {
           return (
             <li key={entry.card.cardId} className={`card-tile ${RARITY_CLASS[entry.card.rarity]}`}>
               <CardImage cardId={info.cardId} imageHash={info.imageHash} name={info.name} />
+              <span className="card-cost">{info.cost}</span>
               <span className="card-count">×{entry.count}</span>
-              {entry.premiumCount > 0 && <span className="premium-badge">P</span>}
               <span className="card-name">{info.name}</span>
-              <span className="card-meta">
-                {info.cost} / {className(info.classId)}
-              </span>
+              <span className="card-meta">{className(info.classId)}</span>
             </li>
           );
         })}

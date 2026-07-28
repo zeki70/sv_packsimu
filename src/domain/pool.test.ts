@@ -100,7 +100,7 @@ describe('buildPool', () => {
     }
   });
 
-  it('プレミアムは同名カードとして通常版と枚数が合算される', () => {
+  it('重複したカードは枚数が合算される', () => {
     const result = buildPool({
       indexes: [makeIndex(10008, 1)], // 各レアリティ1枚だけ → 必ず重複する
       packCounts: new Map([[10008, 20]]),
@@ -109,9 +109,8 @@ describe('buildPool', () => {
       rng: mulberry32(5),
     });
 
-    for (const entry of result.pool.values()) {
-      expect(entry.count).toBe(entry.normalCount + entry.premiumCount);
-    }
+    // 候補が4種しかないので、開封枚数が全てそこに集約される
+    expect(result.pool.size).toBeLessThanOrEqual(4);
     const total = [...result.pool.values()].reduce((sum, e) => sum + e.count, 0);
     expect(total).toBe(20 * CARDS_PER_PACK);
   });

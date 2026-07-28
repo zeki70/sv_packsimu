@@ -2,14 +2,19 @@ import { useMemo, useState } from 'react';
 import type { CardPool } from '../domain/pool';
 import { poolCardsForClass } from '../domain/pool';
 import { DECK_SIZE, maxCopiesOf, validateDeck, type Deck } from '../domain/deckRules';
+import type { Rarity } from '../domain/types';
 import { getCard } from '../data/cardDatabase';
 import { CLASSES, RARITY_CLASS, className, typeKey, typeLabel } from '../ui/labels';
 import { CardImage } from './CardImage';
+import { DeckPreviewModal } from './DeckPreviewModal';
 
 interface Props {
   readonly pool: CardPool;
-  readonly initialClassId: number | null;
-  readonly initialDeck: Deck;
+  /** クラスとデッキは App が保持する。画面を行き来しても状態がずれないようにするため */
+  readonly classId: number | null;
+  readonly deck: Deck;
+  readonly onClassChange: (classId: number | null) => void;
+  readonly onDeckChange: (deck: Deck) => void;
   readonly onBack: () => void;
   readonly onSave: (classId: number, deck: Deck) => void;
 }
@@ -17,13 +22,22 @@ interface Props {
 const COSTS = [0, 1, 2, 3, 4, 5, 6, 7] as const; // 7 は「7以上」
 const TYPE_FILTERS = ['follower', 'amulet', 'spell'] as const;
 
-export function DeckBuilder({ pool, initialClassId, initialDeck, onBack, onSave }: Props) {
-  const [classId, setClassId] = useState<number | null>(initialClassId);
-  const [deck, setDeck] = useState<Deck>(initialDeck);
+export function DeckBuilder({
+  pool,
+  classId,
+  deck,
+  onClassChange,
+  onDeckChange,
+  onBack,
+  onSave,
+}: Props) {
   const [search, setSearch] = useState('');
   const [costFilter, setCostFilter] = useState<number | null>(null);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [ownedOnly, setOwnedOnly] = useState(true);
+  const [showPreview, setShowPreview] = useState(false);
+
+  const deckTotal = [...deck.values()].reduce((sum, n) => sum + n, 0);
 
   const available = useMemo(
     () => (classId === null ? [] : poolCardsForClass(pool, classId)),
@@ -32,7 +46,7 @@ export function DeckBuilder({ pool, initialClassId, initialDeck, onBack, onSave 
 
   const visible = useMemo(() => {
     const query = search.trim();
-    return available
+    return [...available]
       .filter((entry) => {
         const info = getCard(entry.card.cardId);
         if (info === undefined) return false;
@@ -51,9 +65,7 @@ export function DeckBuilder({ pool, initialClassId, initialDeck, onBack, onSave 
       .sort((a, b) => {
         const ai = getCard(a.card.cardId)!;
         const bi = getCard(b.card.cardId)!;
-        if (ai.cost !== bi.cost) return ai.cost - bi.cost;
-        if (a.card.rarity !== b.card.rarity) return b.card.rarity - a.card.rarity;
-        return a.card.cardId - b.card.cardId;
+        return ai.cost - bi.cost || a.card.cardId - b.card.cardId;
       });
   }, [available, pool, search, costFilter, typeFilter, ownedOnly]);
 
@@ -72,10 +84,29 @@ export function DeckBuilder({ pool, initialClassId, initialDeck, onBack, onSave 
     const updated = new Map(deck);
     if (next === 0) updated.delete(cardId);
     else updated.set(cardId, next);
-    setDeck(updated);
+    onDeckChange(updated);
   };
 
-  const deckTotal = [...deck.values()].reduce((sum, n) => sum + n, 0);
+  /**
+   * クラスを変えると、いま入っているカードはそのクラスで使えなくなる。
+   * 黙って持ち越すと不正なデッキが残るので、確認のうえ破棄する。
+   */
+  const requestClassChange = (): void => {
+    if (deckTotal > 0) {
+      const ok = window.confirm(
+        `クラスを変えると、いま組んでいるデッキ（${deckTotal}枚）は破棄されます。よろしいですか？`,
+      );
+      if (!ok) return;
+    }
+    onDeckChange(new Map());
+    onClassChange(null);
+  };
+
+  const clearDeck = (): void => {
+    if (deckTotal === 0) return;
+    if (!window.confirm(`デッキ（${deckTotal}枚）を空にします。よろしいですか？`)) return;
+    onDeckChange(new Map());
+  };
 
   const deckList = useMemo(
     () =>
@@ -104,7 +135,7 @@ export function DeckBuilder({ pool, initialClassId, initialDeck, onBack, onSave 
               <li key={cls.id}>
                 <button
                   className={usable >= DECK_SIZE ? 'class-card' : 'class-card class-card--thin'}
-                  onClick={() => setClassId(cls.id)}
+                  onClick={() => onClassChange(cls.id)}
                 >
                   <span className="class-name">{cls.name}</span>
                   <span className="class-count">投入可能 {usable} 枚</span>
@@ -127,8 +158,11 @@ export function DeckBuilder({ pool, initialClassId, initialDeck, onBack, onSave 
           <p className="muted tiny">選択クラス＋ニュートラル、開封した枚数まで、40枚ちょうど</p>
         </div>
         <div className="builder-actions">
-          <button onClick={() => setClassId(null)}>クラスを変える</button>
+          <button onClick={requestClassChange}>クラスを変える</button>
           <button onClick={onBack}>プールを見る</button>
+          <button onClick={() => setShowPreview(true)} disabled={deckTotal === 0}>
+            デッキ確認
+          </button>
           <button
             className="primary"
             disabled={validation?.valid !== true}
@@ -207,14 +241,13 @@ export function DeckBuilder({ pool, initialClassId, initialDeck, onBack, onSave 
                       e.preventDefault();
                       changeCount(entry.card.cardId, -1);
                     }}
-                    title={`${info.name}（所持 ${entry.count} 枚 / 投入上限 ${limit} 枚）`}
+                    title={`${info.name}（所持 ${entry.count} 枚 / 投入上限 ${limit} 枚）\n左クリックで追加・右クリックで削除`}
                   >
                     <CardImage cardId={info.cardId} imageHash={info.imageHash} name={info.name} />
                     <span className="card-cost">{info.cost}</span>
                     <span className="card-count">
                       {inDeck}/{limit}
                     </span>
-                    {entry.premiumCount > 0 && <span className="premium-badge">P</span>}
                     <span className="card-name">{info.name}</span>
                   </button>
                 </li>
@@ -227,21 +260,45 @@ export function DeckBuilder({ pool, initialClassId, initialDeck, onBack, onSave 
           <div className={deckTotal === DECK_SIZE ? 'deck-count ok' : 'deck-count'}>
             {deckTotal} / {DECK_SIZE}
           </div>
+          <div className="deck-progress">
+            <div
+              className={deckTotal > DECK_SIZE ? 'deck-progress-bar over' : 'deck-progress-bar'}
+              style={{ width: `${Math.min(100, (deckTotal / DECK_SIZE) * 100)}%` }}
+            />
+          </div>
 
           <ul className="deck-list">
             {deckList.map((row) => (
-              <li key={row.cardId} className={RARITY_CLASS[row.info!.rarity as 1 | 2 | 3 | 4]}>
+              <li key={row.cardId} className={RARITY_CLASS[row.info!.rarity as Rarity]}>
+                <CardImage
+                  cardId={row.info!.cardId}
+                  imageHash={row.info!.imageHash}
+                  name={row.info!.name}
+                  className="deck-thumb"
+                />
                 <span className="deck-cost">{row.info!.cost}</span>
-                <span className="deck-name">{row.info!.name}</span>
+                <span className="deck-name" title={row.info!.name}>
+                  {row.info!.name}
+                </span>
                 <span className="deck-controls">
-                  <button onClick={() => changeCount(row.cardId, -1)}>−</button>
+                  <button onClick={() => changeCount(row.cardId, -1)} aria-label="1枚減らす">
+                    −
+                  </button>
                   <span className="deck-n">{row.count}</span>
-                  <button onClick={() => changeCount(row.cardId, 1)}>＋</button>
+                  <button onClick={() => changeCount(row.cardId, 1)} aria-label="1枚増やす">
+                    ＋
+                  </button>
                 </span>
               </li>
             ))}
             {deckList.length === 0 && <li className="muted">左のカードをクリックして追加します</li>}
           </ul>
+
+          {deckTotal > 0 && (
+            <button className="clear-deck" onClick={clearDeck}>
+              デッキを空にする
+            </button>
+          )}
 
           {validation !== null && validation.errors.length > 0 && (
             <ul className="errors">
@@ -252,6 +309,10 @@ export function DeckBuilder({ pool, initialClassId, initialDeck, onBack, onSave 
           )}
         </aside>
       </div>
+
+      {showPreview && (
+        <DeckPreviewModal deck={deck} classId={classId} onClose={() => setShowPreview(false)} />
+      )}
     </section>
   );
 }

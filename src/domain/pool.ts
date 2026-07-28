@@ -15,13 +15,11 @@ const ALL_RARITIES: readonly Rarity[] = [
   Rarity.Legend,
 ];
 
-/** カード1種の所持状況。プレミアムは同名カードとして通常版と合算する。 */
+/** カード1種の所持状況。 */
 export interface PoolEntry {
   readonly card: PoolCard;
-  /** normalCount + premiumCount */
+  /** 開封して手に入れた枚数 */
   readonly count: number;
-  readonly normalCount: number;
-  readonly premiumCount: number;
 }
 
 /** cardId → 所持状況 */
@@ -57,23 +55,10 @@ function indexCardsById(indexes: readonly SetCardIndex[]): Map<number, PoolCard>
   return lookup;
 }
 
-function addToPool(
-  pool: Map<number, PoolEntry>,
-  card: PoolCard,
-  premium: boolean,
-  copies: number,
-): void {
+function addToPool(pool: Map<number, PoolEntry>, card: PoolCard, copies: number): void {
   const prev = pool.get(card.cardId);
-  const normalCount = (prev?.normalCount ?? 0) + (premium ? 0 : copies);
-  const premiumCount = (prev?.premiumCount ?? 0) + (premium ? copies : 0);
-
   // 既存エントリを書き換えず、新しいオブジェクトに差し替える
-  pool.set(card.cardId, {
-    card,
-    count: normalCount + premiumCount,
-    normalCount,
-    premiumCount,
-  });
+  pool.set(card.cardId, { card, count: (prev?.count ?? 0) + copies });
 }
 
 /**
@@ -105,14 +90,14 @@ export function buildPool(input: BuildPoolInput): BuildPoolResult {
         `排出されたカード ${opened.cardId} が弾 ${opened.setId} のインデックスに見つかりません`,
       );
     }
-    addToPool(pool, card, opened.premium, 1);
+    addToPool(pool, card, 1);
   }
 
   // ベーシックはパック排出ではなく全プレイヤーが初期所持しているため、
   // 開封結果とは別に上限枚数ぶんを無償で追加する
   if (includeBasic) {
     for (const card of basicCards) {
-      addToPool(pool, card, false, card.deckEnabledNum);
+      addToPool(pool, card, card.deckEnabledNum);
     }
   }
 

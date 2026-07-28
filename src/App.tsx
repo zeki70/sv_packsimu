@@ -86,8 +86,10 @@ export function App() {
         {view === 'deck' && poolResult !== null && (
           <DeckBuilder
             pool={poolResult.pool}
-            initialClassId={classId}
-            initialDeck={deck}
+            classId={classId}
+            deck={deck}
+            onClassChange={setClassId}
+            onDeckChange={setDeck}
             onBack={() => setView('pool')}
             onSave={handleSave}
           />

@@ -32,12 +32,15 @@ export interface PoolCard {
   readonly deckEnabledNum: number;
 }
 
-/** 開封で1枚引き当てた結果。 */
+/**
+ * 開封で1枚引き当てた結果。
+ *
+ * プレミアム版は見た目だけの違いでデッキ構築に影響しないため、区別しない。
+ */
 export interface OpenedCard {
   readonly cardId: number;
   readonly setId: number;
   readonly rarity: Rarity;
-  readonly premium: boolean;
 }
 
 /**

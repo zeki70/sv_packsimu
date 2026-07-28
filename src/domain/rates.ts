@@ -11,9 +11,6 @@ export const CARDS_PER_PACK = 8;
 /** うち通常枠の枚数。残り1枚はシルバーレア以上確定枠 */
 export const NORMAL_SLOT_COUNT = 7;
 
-/** 各カードがプレミアム版になる確率（レアリティ抽選とは独立） */
-export const PREMIUM_RATE = 0.08;
-
 /**
  * レジェンド確定保証（天井）。
  * 「9パック連続でレジェンドが排出されなかった場合、10パック目から排出される
@@ -26,26 +23,26 @@ export interface RarityWeight {
   readonly rarity: Rarity;
   /** 0..1 の確率。同一テーブル内の合計が 1 になること */
   readonly weight: number;
-  /**
-   * エクスチェンジチケット枠の置き換え。
-   * チケットは本アプリで意味を持たないため、プレミアム確定のレジェンドとして排出する。
-   */
-  readonly guaranteedPremium: boolean;
 }
+
+/**
+ * エクスチェンジチケット(4種) 0.060% 枠。
+ * チケットは本アプリで意味を持たないため、レジェンドとして排出する。
+ * 下のテーブルではレジェンドの重みに合算してある（1.500% + 0.060% = 1.560%）。
+ */
+const LEGEND_WEIGHT = 0.015 + 0.0006;
 
 /** 通常枠（7枚）— 1枚ごとに独立抽選 */
 export const NORMAL_SLOT_WEIGHTS: readonly RarityWeight[] = [
-  { rarity: Rarity.Legend, weight: 0.0006, guaranteedPremium: true }, // 旧エクスチェンジチケット(4種)
-  { rarity: Rarity.Legend, weight: 0.015, guaranteedPremium: false },
-  { rarity: Rarity.Gold, weight: 0.06, guaranteedPremium: false },
-  { rarity: Rarity.Silver, weight: 0.25, guaranteedPremium: false },
-  { rarity: Rarity.Bronze, weight: 0.6744, guaranteedPremium: false },
+  { rarity: Rarity.Legend, weight: LEGEND_WEIGHT },
+  { rarity: Rarity.Gold, weight: 0.06 },
+  { rarity: Rarity.Silver, weight: 0.25 },
+  { rarity: Rarity.Bronze, weight: 0.6744 },
 ];
 
 /** シルバーレア以上確定枠（1枚） */
 export const GUARANTEED_SLOT_WEIGHTS: readonly RarityWeight[] = [
-  { rarity: Rarity.Legend, weight: 0.0006, guaranteedPremium: true }, // 旧エクスチェンジチケット(4種)
-  { rarity: Rarity.Legend, weight: 0.015, guaranteedPremium: false },
-  { rarity: Rarity.Gold, weight: 0.06, guaranteedPremium: false },
-  { rarity: Rarity.Silver, weight: 0.9244, guaranteedPremium: false },
+  { rarity: Rarity.Legend, weight: LEGEND_WEIGHT },
+  { rarity: Rarity.Gold, weight: 0.06 },
+  { rarity: Rarity.Silver, weight: 0.9244 },
 ];

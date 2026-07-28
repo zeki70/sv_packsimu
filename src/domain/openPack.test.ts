@@ -2,12 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { openPack, openPacks } from './openPack';
 import { mulberry32 } from './rng';
 import { Rarity, type PoolCard, type SetCardIndex } from './types';
-import {
-  CARDS_PER_PACK,
-  NORMAL_SLOT_COUNT,
-  PITY_THRESHOLD,
-  PREMIUM_RATE,
-} from './rates';
+import { CARDS_PER_PACK, NORMAL_SLOT_COUNT, PITY_THRESHOLD } from './rates';
 
 /** テスト用に、各レアリティ n 枚ずつ持つ弾を作る。 */
 function makeIndex(setId = 10008, perRarity = 20): SetCardIndex {
@@ -134,106 +129,60 @@ describe('openPacks — 連続開封', () => {
 describe('openPack — 排出率', () => {
   const TRIALS = 60_000;
 
+  /**
+   * 天井カウントを持ち越さずに開封する。
+   *
+   * カウントを持ち越すと天井パックが混ざる。天井パックは「レジェンドが出なかったパック」
+   * だけなので、それを標本から除外するとレジェンド率が上振れしてしまう。
+   * 素の排出率を測るときは常に pity=0 で開ける。
+   */
+  function openWithoutPity(index: ReturnType<typeof makeIndex>, rng: () => number) {
+    const result = openPack(index, 0, rng);
+    expect(result.replacedByPity).toBe(false);
+    return result;
+  }
+
+  const emptyCounts = (): Record<number, number> => ({
+    [Rarity.Bronze]: 0,
+    [Rarity.Silver]: 0,
+    [Rarity.Gold]: 0,
+    [Rarity.Legend]: 0,
+  });
+
   it('通常枠の排出率が公表値に収束する', () => {
     const index = makeIndex();
     const rng = mulberry32(20260728);
-    const counts: Record<number, number> = {
-      [Rarity.Bronze]: 0,
-      [Rarity.Silver]: 0,
-      [Rarity.Gold]: 0,
-      [Rarity.Legend]: 0,
-    };
+    const counts = emptyCounts();
+    let slots = 0;
 
-    let pity = 0;
-    let normalSlots = 0;
     for (let i = 0; i < TRIALS; i++) {
-      const result = openPack(index, pity, rng);
-      pity = result.pity;
-      // 天井による置き換えが混ざらないよう、天井が絡まないパックのみ集計
-      if (result.replacedByPity) continue;
+      const result = openWithoutPity(index, rng);
       for (let s = 0; s < NORMAL_SLOT_COUNT; s++) {
         counts[result.cards[s]!.rarity]! += 1;
-        normalSlots += 1;
+        slots += 1;
       }
     }
 
-    const rate = (r: Rarity) => counts[r]! / normalSlots;
+    const rate = (r: Rarity) => counts[r]! / slots;
     expect(rate(Rarity.Bronze)).toBeCloseTo(0.6744, 2);
     expect(rate(Rarity.Silver)).toBeCloseTo(0.25, 2);
     expect(rate(Rarity.Gold)).toBeCloseTo(0.06, 2);
-    // レジェンド 1.500% + 旧チケット枠 0.060%
-    expect(rate(Rarity.Legend)).toBeGreaterThan(0.012);
-    expect(rate(Rarity.Legend)).toBeLessThan(0.020);
+    // レジェンド 1.500% + 旧エクスチェンジチケット枠 0.060% = 1.560%
+    expect(rate(Rarity.Legend)).toBeCloseTo(0.0156, 3);
   });
 
   it('確定枠の排出率が公表値に収束する', () => {
     const index = makeIndex();
     const rng = mulberry32(999);
-    const counts: Record<number, number> = {
-      [Rarity.Bronze]: 0,
-      [Rarity.Silver]: 0,
-      [Rarity.Gold]: 0,
-      [Rarity.Legend]: 0,
-    };
+    const counts = emptyCounts();
 
-    let pity = 0;
-    let slots = 0;
     for (let i = 0; i < TRIALS; i++) {
-      const result = openPack(index, pity, rng);
-      pity = result.pity;
-      if (result.replacedByPity) continue;
-      counts[result.cards[NORMAL_SLOT_COUNT]!.rarity]! += 1;
-      slots += 1;
+      counts[openWithoutPity(index, rng).cards[NORMAL_SLOT_COUNT]!.rarity]! += 1;
     }
 
     expect(counts[Rarity.Bronze]).toBe(0);
-    expect(counts[Rarity.Silver]! / slots).toBeCloseTo(0.9244, 2);
-    expect(counts[Rarity.Gold]! / slots).toBeCloseTo(0.06, 2);
-  });
-
-  it('プレミアム率が約8%になる（ブロンズで測定）', () => {
-    const index = makeIndex();
-    const rng = mulberry32(4242);
-    let bronze = 0;
-    let premium = 0;
-
-    let pity = 0;
-    for (let i = 0; i < TRIALS; i++) {
-      const result = openPack(index, pity, rng);
-      pity = result.pity;
-      for (const card of result.cards) {
-        if (card.rarity !== Rarity.Bronze) continue;
-        bronze += 1;
-        if (card.premium) premium += 1;
-      }
-    }
-
-    expect(premium / bronze).toBeCloseTo(PREMIUM_RATE, 2);
-  });
-
-  it('旧エクスチェンジチケット枠はプレミアム確定のレジェンドとして排出される', () => {
-    // 0.060% 枠だけを狙い撃ちできないため、レジェンドのプレミアム率が
-    // 素の 8% より有意に高いことで確認する
-    const index = makeIndex();
-    const rng = mulberry32(31337);
-    let legend = 0;
-    let premium = 0;
-
-    let pity = 0;
-    for (let i = 0; i < TRIALS * 3; i++) {
-      const result = openPack(index, pity, rng);
-      pity = result.pity;
-      if (result.replacedByPity) continue;
-      for (const card of result.cards) {
-        if (card.rarity !== Rarity.Legend) continue;
-        legend += 1;
-        if (card.premium) premium += 1;
-      }
-    }
-
-    // 期待値: (0.0006 * 1 + 0.015 * 0.08) / 0.0156 ≈ 11.5%
-    const ratio = premium / legend;
-    expect(ratio).toBeGreaterThan(PREMIUM_RATE);
-    expect(ratio).toBeLessThan(0.20);
+    expect(counts[Rarity.Silver]! / TRIALS).toBeCloseTo(0.9244, 2);
+    expect(counts[Rarity.Gold]! / TRIALS).toBeCloseTo(0.06, 2);
+    expect(counts[Rarity.Legend]! / TRIALS).toBeCloseTo(0.0156, 3);
   });
 });

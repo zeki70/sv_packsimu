@@ -10,7 +10,7 @@ function card(cardId: number, classId: number, deckEnabledNum = 3): PoolCard {
 function makePool(entries: readonly (readonly [PoolCard, number])[]): CardPool {
   const map = new Map<number, PoolEntry>();
   for (const [c, count] of entries) {
-    map.set(c.cardId, { card: c, count, normalCount: count, premiumCount: 0 });
+    map.set(c.cardId, { card: c, count });
   }
   return map;
 }

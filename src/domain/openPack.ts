@@ -4,7 +4,6 @@ import {
   NORMAL_SLOT_COUNT,
   NORMAL_SLOT_WEIGHTS,
   PITY_THRESHOLD,
-  PREMIUM_RATE,
   type RarityWeight,
 } from './rates';
 import { pickUniform, pickWeighted, type Rng } from './rng';
@@ -23,12 +22,7 @@ export interface MultiPackResult {
   readonly pity: number;
 }
 
-function drawFromRarity(
-  index: SetCardIndex,
-  rarity: Rarity,
-  rng: Rng,
-  forcePremium: boolean,
-): OpenedCard {
+function drawFromRarity(index: SetCardIndex, rarity: Rarity, rng: Rng): OpenedCard {
   const candidates = index.byRarity[rarity];
   if (candidates.length === 0) {
     throw new Error(
@@ -37,20 +31,12 @@ function drawFromRarity(
   }
 
   const card = pickUniform(rng, candidates);
-  // 分岐で乱数の消費数が変わらないよう、常に引いてから判定する
-  const premiumRoll = rng() < PREMIUM_RATE;
-
-  return {
-    cardId: card.cardId,
-    setId: card.setId,
-    rarity,
-    premium: forcePremium || premiumRoll,
-  };
+  return { cardId: card.cardId, setId: card.setId, rarity };
 }
 
 function drawSlot(index: SetCardIndex, weights: readonly RarityWeight[], rng: Rng): OpenedCard {
   const entry = pickWeighted(rng, weights);
-  return drawFromRarity(index, entry.rarity, rng, entry.guaranteedPremium);
+  return drawFromRarity(index, entry.rarity, rng);
 }
 
 /**
@@ -74,7 +60,7 @@ export function openPack(index: SetCardIndex, pity: number, rng: Rng): PackOpenR
   let replacedByPity = false;
   if (!drewLegend && pity >= PITY_THRESHOLD) {
     const slot = Math.min(Math.floor(rng() * CARDS_PER_PACK), CARDS_PER_PACK - 1);
-    cards[slot] = drawFromRarity(index, Rarity.Legend, rng, false);
+    cards[slot] = drawFromRarity(index, Rarity.Legend, rng);
     replacedByPity = true;
   }
 
