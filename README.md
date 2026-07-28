@@ -79,12 +79,15 @@ npm run deploy     # ビルドして gh-pages ブランチへ配信
 
 ```bash
 cd ../シャドバ/shadowverse-scraper
-node fetch_all_cards.js     # 公式から再取得
-node download_images.js     # 未取得の画像だけダウンロード
+node fetch_all_cards.js     # 公式からカードデータを再取得
 cd -
 npm run sync:cards          # → src/data/cards.json
-npm run sync:images         # → public/cards/*.webp
+npm run sync:images         # → public/cards/*.webp（公式CDNから直接取得）
 ```
+
+カード画像はバランス調整で差し替わり、そのとき `card_image_hash` も変わります。
+`sync:images` は `public/cards/manifest.json` に生成時のハッシュを記録し、
+**変わったカードだけ取り直します**。全件やり直すときは `npm run sync:images -- --all`。
 
 新しい弾が追加されても、対象弾は `card_set_id` から動的に決まるためコード変更は不要です。
 

@@ -167,7 +167,18 @@ SVCardEntry = { common: SVCardData, evo?: SVEvoData, specific_effects?: Specific
 - 一覧・デッキ構築・開封演出 → `public/cards/<cardId>.webp`（300px幅・q80）。**実測 735枚で20.6MB**
 - カード詳細の拡大表示のみ → `https://shadowverse-wb.com/uploads/card_image/jpn/card/<hash>.png`
 - **ファイル名は `imageHash` ではなく `cardId`**。scraper の `images/common/<cardId>.png` に合わせている
-- 生成は `npm run sync:images`（sharp を使用）。元画像が無い弾はスキップして弾別に報告する
+- 生成は `npm run sync:images`（sharp を使用）。**公式CDNから直接取得する**
+
+> **カード画像は差し替わる。** バランス調整でスタッツや効果テキストが変わると
+> 画像そのものが作り直され、`card_image_hash` も変わる。
+>
+> scraper の `download_images.js` は `<cardId>.png` というファイル名で保存し、
+> 「ファイルが存在すればスキップ」する。**ファイル名にハッシュが入らないので、
+> 画像が差し替わっても古いものが永久に残る**。実際に調整前の画像が混ざっていた。
+>
+> `buildImages.ts` は `public/cards/manifest.json` に cardId → imageHash を記録し、
+> **ハッシュが変わったカードだけ公式から取り直す**。scraper の images/ には依存しない。
+> 全件取り直したいときは `npm run sync:images -- --all`。
 - `CardImage.tsx` はローカルWebPを先に読み、404 のときだけ1回だけCDNへフォールバックする
 - **base64でJSONに埋め込まないこと**（33%肥大・ブラウザキャッシュが効かない・パースが重い）
 
