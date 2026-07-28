@@ -33,6 +33,8 @@ export interface SealedSession {
   readonly seed: number;
   readonly config: SealedConfig;
   readonly createdAt: string;
+  /** 適用したレギュレーション。開封後の案内を出し分けるために持つ */
+  readonly presetId?: string;
 }
 
 export interface SavedDeck {
@@ -51,12 +53,17 @@ export function defaultConfig(): SealedConfig {
   };
 }
 
-export function createSession(config: SealedConfig, seed?: number): SealedSession {
-  return {
+export function createSession(
+  config: SealedConfig,
+  seed?: number,
+  presetId?: string,
+): SealedSession {
+  const session: SealedSession = {
     seed: seed ?? Math.floor(Math.random() * 0xffffffff),
     config,
     createdAt: new Date().toISOString(),
   };
+  return presetId === undefined ? session : { ...session, presetId };
 }
 
 /**

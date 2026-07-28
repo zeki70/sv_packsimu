@@ -87,8 +87,10 @@ SVCardEntry = { common: SVCardData, evo?: SVEvoData, specific_effects?: Specific
 - 対象弾・パック数は**ユーザーが変更できる**
 - **レギュレーションのプリセット**（`src/session/presets.ts`）
   - 標準: 最新6弾 × 各10パック
-  - **The K4sen: 伝説の幕開け20 + 最新弾20 + 好きな弾5 / ベーシック使用可**
-    「好きな弾」はユーザーが選ぶので、プリセットは 40パックぶんだけ埋めて残りは空ける
+  - **The k4sen: 伝説の幕開け20 + 最新弾20 + 好きな弾5 / ベーシック使用可**
+    「好きな弾」は**開封結果を見てから**選ぶ形式。プリセットは固定の40パックぶんだけ埋め、
+    残りは開封後に「追加で開ける」から足してもらう（`needsFreeChoice` でプール画面に案内を出す）
+    表記は **The k4sen**（k は小文字）
   - 弾IDはハードコードせず、`findSetIdByName` と `latestPackSetIds` で解決する
 - **追加開封**（`withExtraPacks`）: パック数を増やすだけ。シードは変えない
   - 弾ごとに独立した乱数列（`rngFor`）を使っているので、パック数を増やしても
@@ -248,6 +250,9 @@ npm run sync:cards && npm run sync:images
 - カードタイプの判定は `poolSort.typeKeyOf` に集約する（`labels.typeLabel` もこれを使う）
 - デッキ構築中は検索・絞り込みを `position: sticky` で画面に残す（`.pool-filters`）
 - 進化後のスタッツはスクレイプ元に存在しない。詳細画面に出せるのは進化時テキストまで
+- **このツールはデッキを決めるところまで**。対戦機能は持たない。
+  デッキが完成したら「Shadowverse: Worlds Beyond のアプリで同じデッキを組んでください」と案内する
+  （デッキ構築画面の完成時とデッキ確認モーダルの2箇所）
 
 ## テスト方針
 

@@ -289,6 +289,12 @@ export function DeckBuilder({
             {deckList.length === 0 && <li className="muted">左のカードをクリックして追加します</li>}
           </ul>
 
+          {validation?.valid === true && (
+            <p className="notice notice--done">
+              デッキ完成です。Shadowverse: Worlds Beyond のアプリで同じデッキを組んで対戦してください。
+            </p>
+          )}
+
           {deckTotal > 0 && (
             <button className="clear-deck" onClick={clearDeck}>
               デッキを空にする

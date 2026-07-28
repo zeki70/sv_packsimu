@@ -20,6 +20,9 @@ import { MouseGuide } from './MouseGuide';
 interface Props {
   readonly result: BuildPoolResult;
   readonly onBuildDeck: () => void;
+  /** レギュレーション由来の案内（The k4sen の「好きな弾を追加」など） */
+  readonly notice?: string;
+  readonly onAddPacks?: () => void;
 }
 
 const lookup = (cardId: number): LiteCard | undefined => getCard(cardId);
@@ -27,7 +30,7 @@ const lookup = (cardId: number): LiteCard | undefined => getCard(cardId);
 const SORT_MODES: readonly PoolSortMode[] = ['cost', 'rarity'];
 const TYPE_KEYS: readonly CardTypeKey[] = ['follower', 'amulet', 'spell'];
 
-export function PoolView({ result, onBuildDeck }: Props) {
+export function PoolView({ result, onBuildDeck, notice, onAddPacks }: Props) {
   const [rarityFilter, setRarityFilter] = useState<Rarity | null>(null);
   const [classFilter, setClassFilter] = useState<number | null>(null);
   const [typeFilter, setTypeFilter] = useState<CardTypeKey | null>(null);
@@ -72,6 +75,17 @@ export function PoolView({ result, onBuildDeck }: Props) {
           </button>
         </div>
       </header>
+
+      {notice !== undefined && (
+        <p className="notice">
+          <span>{notice}</span>
+          {onAddPacks !== undefined && (
+            <button className="primary" onClick={onAddPacks}>
+              追加で開ける
+            </button>
+          )}
+        </p>
+      )}
 
       <div className="stat-row">
         <div className="stat">

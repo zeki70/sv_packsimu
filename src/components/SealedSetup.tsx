@@ -10,7 +10,7 @@ import {
 import { PRESETS, type SealedPreset } from '../session/presets';
 
 interface Props {
-  readonly onStart: (config: SealedConfig, seed?: number) => void;
+  readonly onStart: (config: SealedConfig, presetId: string, seed?: number) => void;
 }
 
 export function SealedSetup({ onStart }: Props) {
@@ -54,7 +54,7 @@ export function SealedSetup({ onStart }: Props) {
 
   const handleStart = (): void => {
     const parsed = Number.parseInt(seedText, 10);
-    onStart(config, Number.isNaN(parsed) ? undefined : parsed >>> 0);
+    onStart(config, presetId, Number.isNaN(parsed) ? undefined : parsed >>> 0);
   };
 
   return (

@@ -64,6 +64,12 @@ export function DeckPreviewModal({ deck, classId, onClose }: Props) {
           <button onClick={onClose}>閉じる</button>
         </header>
 
+        <p className="notice">
+          {total === DECK_SIZE
+            ? 'このデッキを Shadowverse: Worlds Beyond のアプリで同じように組んで対戦してください。'
+            : `あと ${DECK_SIZE - total} 枚です。40枚そろえたら、Shadowverse: Worlds Beyond のアプリで同じデッキを組んでください。`}
+        </p>
+
         <div className="curve">
           {Array.from({ length: 9 }, (_, cost) => {
             const n = curve.buckets.get(cost) ?? 0;

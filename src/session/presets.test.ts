@@ -23,7 +23,7 @@ describe('プリセット共通', () => {
   });
 });
 
-describe('The K4sen', () => {
+describe('The k4sen', () => {
   const config = preset('k4sen').build();
 
   it('伝説の幕開けが20パック', () => {

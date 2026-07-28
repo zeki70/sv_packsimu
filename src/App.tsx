@@ -4,6 +4,7 @@ import { PoolView } from './components/PoolView';
 import { DeckBuilder } from './components/DeckBuilder';
 import { DeckPreviewModal } from './components/DeckPreviewModal';
 import { AddPacksModal } from './components/AddPacksModal';
+import { needsFreeChoice } from './session/presets';
 import type { Deck } from './domain/deckRules';
 import {
   buildPoolFor,
@@ -13,6 +14,7 @@ import {
   loadSession,
   saveDeck,
   saveSession,
+  totalPackCount,
   withExtraPacks,
   type SealedConfig,
   type SealedSession,
@@ -43,8 +45,8 @@ export function App() {
   // プールはシードと設定から決まるので、保存せず毎回再生成する
   const poolResult = useMemo(() => (session === null ? null : buildPoolFor(session)), [session]);
 
-  const handleStart = (config: SealedConfig, seed?: number): void => {
-    const next = createSession(config, seed);
+  const handleStart = (config: SealedConfig, presetId: string, seed?: number): void => {
+    const next = createSession(config, seed, presetId);
     saveSession(next);
     setSession(next);
     setClassId(null);
@@ -144,8 +146,18 @@ export function App() {
       <main>
         {view === 'setup' && <SealedSetup onStart={handleStart} />}
 
-        {view === 'pool' && poolResult !== null && (
-          <PoolView result={poolResult} onBuildDeck={() => setView('deck')} />
+        {view === 'pool' && poolResult !== null && session !== null && (
+          <PoolView
+            result={poolResult}
+            onBuildDeck={() => setView('deck')}
+            {...(needsFreeChoice(session.presetId, totalPackCount(session.config))
+              ? {
+                  notice:
+                    'The k4sen: この開封結果を見て、好きな弾を5パック追加してください。',
+                  onAddPacks: () => setShowAddPacks(true),
+                }
+              : {})}
+          />
         )}
 
         {view === 'deck' && poolResult !== null && (

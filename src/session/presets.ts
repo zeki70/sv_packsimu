@@ -25,7 +25,7 @@ function latestSetId(): number | undefined {
 }
 
 /**
- * The K4sen のシールド戦レギュレーション。
+ * The k4sen のシールド戦レギュレーション。
  *
  *   伝説の幕開け 20パック / 最新パック 20パック / 好きなパック 5パック
  *   ベーシックカード使用可
@@ -54,22 +54,38 @@ function buildK4sen(): SealedConfig {
   };
 }
 
+export const K4SEN_ID = 'k4sen';
+
+/** The k4sen で自分で決める「好きなパック」の枚数 */
+export const K4SEN_FREE_CHOICE_PACKS = 5;
+
+/** The k4sen の固定ぶん（伝説の幕開け20 + 最新弾20） */
+const K4SEN_FIXED_PACKS = 40;
+
 export const PRESETS: readonly SealedPreset[] = [
   {
     id: 'default',
     name: '標準',
-    summary: `最新${'6'}弾を各${DEFAULT_PACKS_PER_SET}パック / ベーシックなし`,
+    summary: `最新6弾を各${DEFAULT_PACKS_PER_SET}パック / ベーシックなし`,
     todo: null,
     build: defaultConfig,
   },
   {
-    id: 'k4sen',
-    name: 'The K4sen',
-    summary: '伝説の幕開け20 + 最新弾20 + 好きな弾5 / ベーシックあり',
-    todo: '好きな弾を1つ選んで 5 パックに設定してください。',
+    id: K4SEN_ID,
+    name: 'The k4sen',
+    summary: `伝説の幕開け20 + 最新弾20 + 好きな弾${K4SEN_FREE_CHOICE_PACKS} / ベーシックあり`,
+    todo:
+      `まず ${K4SEN_FIXED_PACKS} パックを開封し、その結果を見てから` +
+      `好きな弾を ${K4SEN_FREE_CHOICE_PACKS} パック追加します。` +
+      '追加はヘッダーの「追加で開ける」から行えます。',
     build: buildK4sen,
   },
 ];
 
-/** The K4sen で自分で決める「好きなパック」の枚数 */
-export const K4SEN_FREE_CHOICE_PACKS = 5;
+/**
+ * The k4sen で「好きな弾5パック」がまだ選ばれていないか。
+ * 固定ぶんだけの状態なら、開封後に追加を促す。
+ */
+export function needsFreeChoice(presetId: string | undefined, totalPacks: number): boolean {
+  return presetId === K4SEN_ID && totalPacks <= K4SEN_FIXED_PACKS;
+}

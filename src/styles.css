@@ -760,3 +760,26 @@ input[type="checkbox"] { accent-color: var(--color-accent); width: 1rem; height:
 
 .preset-summary { margin: 0 0 var(--space-md); }
 .set-label .tiny { color: var(--color-text-muted); margin-left: .5rem; }
+
+/* レギュレーション・完成時などの案内 */
+.notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  margin: 0 0 var(--space-sm);
+  padding: .55rem .8rem;
+  background: var(--color-accent-weak);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  font-size: .875rem;
+  line-height: 1.7;
+}
+.notice--done {
+  margin-top: var(--space-sm);
+  background: var(--color-surface-2);
+  border-color: var(--color-ok);
+  color: var(--color-ok);
+  font-size: .8125rem;
+}
