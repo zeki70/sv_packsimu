@@ -32,7 +32,14 @@ export interface BuildPoolInput {
   /** ベーシックカードをプールに無償追加するか */
   readonly includeBasic: boolean;
   readonly basicCards: readonly PoolCard[];
-  readonly rng: Rng;
+  /**
+   * 弾ごとに独立した乱数を返す。
+   *
+   * 全弾で1つの乱数列を共有すると、ある弾のパック数を増やしたときに
+   * 後続の弾の中身まで変わってしまい「追加で開封する」が成立しない。
+   * 弾ごとに分けておけば、パック数を増やしてもその弾の続きが出るだけで済む。
+   */
+  readonly rngFor: (setId: number) => Rng;
 }
 
 export interface BuildPoolResult {
@@ -68,7 +75,7 @@ function addToPool(pool: Map<number, PoolEntry>, card: PoolCard, copies: number)
  * カウンタを共有しない。
  */
 export function buildPool(input: BuildPoolInput): BuildPoolResult {
-  const { indexes, packCounts, includeBasic, basicCards, rng } = input;
+  const { indexes, packCounts, includeBasic, basicCards, rngFor } = input;
 
   const lookup = indexCardsById(indexes);
   const openedCards: OpenedCard[] = [];
@@ -76,7 +83,8 @@ export function buildPool(input: BuildPoolInput): BuildPoolResult {
 
   for (const index of indexes) {
     const packCount = packCounts.get(index.setId) ?? 0;
-    const result = openPacks(index, packCount, rng);
+    // 弾ごとに専用の乱数列を使う。パック数を増やしても先頭は同じ結果になる
+    const result = openPacks(index, packCount, rngFor(index.setId));
     openedCards.push(...result.cards);
     pityBySet.set(index.setId, result.pity);
   }

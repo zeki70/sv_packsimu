@@ -42,7 +42,7 @@ describe('buildPool', () => {
       packCounts: new Map(SIX_SETS.map((id) => [id, 8])),
       includeBasic: false,
       basicCards: BASIC_CARDS,
-      rng: mulberry32(1),
+      rngFor: (setId) => mulberry32(1 + setId),
     });
 
     expect(result.openedCards).toHaveLength(6 * 8 * CARDS_PER_PACK);
@@ -55,7 +55,7 @@ describe('buildPool', () => {
       packCounts: new Map([[10008, 8]]),
       includeBasic: true,
       basicCards: BASIC_CARDS,
-      rng: mulberry32(2),
+      rngFor: (setId) => mulberry32(2 + setId),
     });
 
     for (const card of BASIC_CARDS) {
@@ -71,7 +71,7 @@ describe('buildPool', () => {
       packCounts: new Map([[10008, 8]]),
       includeBasic: false,
       basicCards: BASIC_CARDS,
-      rng: mulberry32(3),
+      rngFor: (setId) => mulberry32(3 + setId),
     });
 
     for (const card of BASIC_CARDS) {
@@ -85,7 +85,7 @@ describe('buildPool', () => {
       packCounts: new Map(SIX_SETS.map((id) => [id, 10])),
       includeBasic: false,
       basicCards: BASIC_CARDS,
-      rng: mulberry32(4),
+      rngFor: (setId) => mulberry32(4 + setId),
     });
 
     // 弾ごとにカウンタが存在する
@@ -106,7 +106,7 @@ describe('buildPool', () => {
       packCounts: new Map([[10008, 20]]),
       includeBasic: false,
       basicCards: BASIC_CARDS,
-      rng: mulberry32(5),
+      rngFor: (setId) => mulberry32(5 + setId),
     });
 
     // 候補が4種しかないので、開封枚数が全てそこに集約される
@@ -124,7 +124,7 @@ describe('buildPool', () => {
       ]),
       includeBasic: false,
       basicCards: BASIC_CARDS,
-      rng: mulberry32(6),
+      rngFor: (setId) => mulberry32(6 + setId),
     });
 
     expect(result.openedCards.every((c) => c.setId === 10008)).toBe(true);
@@ -139,7 +139,7 @@ describe('poolCardsForClass', () => {
       packCounts: new Map(SIX_SETS.map((id) => [id, 8])),
       includeBasic: false,
       basicCards: BASIC_CARDS,
-      rng: mulberry32(7),
+      rngFor: (setId) => mulberry32(7 + setId),
     });
 
     const forElf = poolCardsForClass(result.pool, 1);

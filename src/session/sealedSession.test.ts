@@ -2,10 +2,12 @@ import { describe, it, expect } from 'vitest';
 import {
   DEFAULT_PACKS_PER_SET,
   DEFAULT_SET_COUNT,
+  MAX_PACKS_PER_SET,
   buildPoolFor,
   createSession,
   defaultConfig,
   totalPackCount,
+  withExtraPacks,
 } from './sealedSession';
 import { DECK_SIZE, maxCopiesOf, validateDeck, type Deck } from '../domain/deckRules';
 import { poolCardsForClass } from '../domain/pool';
@@ -90,6 +92,69 @@ describe('シールド戦の通し検証（実カードデータ）', () => {
     expect(withBasic.pool.size).toBeGreaterThan(without.pool.size);
     // 開封結果そのものは変わらない
     expect(withBasic.openedCards).toEqual(without.openedCards);
+  });
+
+  it('パック数を増やしても、既に開封したカードは1枚も変わらない', () => {
+    const base = defaultConfig();
+    const before = buildPoolFor(createSession(base, 4649));
+
+    const extra = new Map(base.setIds.map((id) => [id, 5]));
+    const after = buildPoolFor(createSession(withExtraPacks(base, extra), 4649));
+
+    // 弾ごとに、先頭の開封結果がそのまま残っている
+    for (const setId of base.setIds) {
+      const beforeCards = before.openedCards.filter((c) => c.setId === setId);
+      const afterCards = after.openedCards.filter((c) => c.setId === setId);
+      expect(afterCards.slice(0, beforeCards.length)).toEqual(beforeCards);
+    }
+
+    // 増えたぶんだけ枚数が増えている
+    expect(after.openedCards).toHaveLength(
+      before.openedCards.length + base.setIds.length * 5 * CARDS_PER_PACK,
+    );
+  });
+
+  it('1つの弾だけ増やしても、他の弾の中身は変わらない', () => {
+    const base = defaultConfig();
+    const target = base.setIds[0]!;
+    const before = buildPoolFor(createSession(base, 31337));
+    const after = buildPoolFor(
+      createSession(withExtraPacks(base, new Map([[target, 3]])), 31337),
+    );
+
+    for (const setId of base.setIds) {
+      if (setId === target) continue;
+      expect(after.openedCards.filter((c) => c.setId === setId)).toEqual(
+        before.openedCards.filter((c) => c.setId === setId),
+      );
+    }
+  });
+
+  it('追加開封しても所持枚数は減らない', () => {
+    const base = defaultConfig();
+    const before = buildPoolFor(createSession(base, 777));
+    const after = buildPoolFor(
+      createSession(withExtraPacks(base, new Map(base.setIds.map((id) => [id, 2]))), 777),
+    );
+
+    for (const [cardId, entry] of before.pool) {
+      expect(after.pool.get(cardId)?.count ?? 0).toBeGreaterThanOrEqual(entry.count);
+    }
+  });
+
+  it('withExtraPacks は元の設定を書き換えない', () => {
+    const base = defaultConfig();
+    const snapshot = JSON.stringify(base);
+    withExtraPacks(base, new Map([[base.setIds[0]!, 5]]));
+    expect(JSON.stringify(base)).toBe(snapshot);
+  });
+
+  it('追加は1弾あたりの上限を超えない', () => {
+    const base = defaultConfig();
+    const huge = withExtraPacks(base, new Map(base.setIds.map((id) => [id, 999])));
+    for (const setId of huge.setIds) {
+      expect(huge.packCounts[setId]).toBeLessThanOrEqual(MAX_PACKS_PER_SET);
+    }
   });
 
   it('パック数を減らすと40枚組めなくなるクラスが出る', () => {

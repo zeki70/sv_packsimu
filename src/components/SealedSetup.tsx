@@ -7,6 +7,7 @@ import {
   totalPackCount,
   type SealedConfig,
 } from '../session/sealedSession';
+import { PRESETS, type SealedPreset } from '../session/presets';
 
 interface Props {
   readonly onStart: (config: SealedConfig, seed?: number) => void;
@@ -15,17 +16,30 @@ interface Props {
 export function SealedSetup({ onStart }: Props) {
   const [config, setConfig] = useState<SealedConfig>(defaultConfig);
   const [seedText, setSeedText] = useState('');
+  const [presetId, setPresetId] = useState('default');
 
   const allSets = packSetIds();
   const selected = new Set(config.setIds);
   const total = totalPackCount(config);
+  const activePreset = PRESETS.find((p) => p.id === presetId);
+
+  const applyPreset = (preset: SealedPreset): void => {
+    setPresetId(preset.id);
+    setConfig(preset.build());
+  };
+
+  /** 手で触ったらプリセットの表示を外す。中身と表示がずれないようにするため */
+  const updateConfig = (next: SealedConfig): void => {
+    setConfig(next);
+    setPresetId('custom');
+  };
 
   const toggleSet = (setId: number): void => {
     const next = selected.has(setId)
       ? config.setIds.filter((id) => id !== setId)
       : [...config.setIds, setId].sort((a, b) => a - b);
 
-    setConfig({
+    updateConfig({
       ...config,
       setIds: next,
       packCounts: { ...config.packCounts, [setId]: config.packCounts[setId] ?? DEFAULT_PACKS_PER_SET },
@@ -35,7 +49,7 @@ export function SealedSetup({ onStart }: Props) {
   const setPackCount = (setId: number, raw: string): void => {
     const parsed = Number.parseInt(raw, 10);
     const count = Number.isNaN(parsed) ? 0 : Math.min(Math.max(parsed, 0), MAX_PACKS_PER_SET);
-    setConfig({ ...config, packCounts: { ...config.packCounts, [setId]: count } });
+    updateConfig({ ...config, packCounts: { ...config.packCounts, [setId]: count } });
   };
 
   const handleStart = (): void => {
@@ -49,6 +63,30 @@ export function SealedSetup({ onStart }: Props) {
       <p className="muted">
         選んだ弾のパックを開封してカードプールを作ります。デッキはそのプールにあるカードだけで組みます。
       </p>
+
+      <h3>レギュレーション</h3>
+      <div className="filter-row">
+        {PRESETS.map((preset) => (
+          <button
+            key={preset.id}
+            className={presetId === preset.id ? 'chip chip--on' : 'chip'}
+            onClick={() => applyPreset(preset)}
+          >
+            {preset.name}
+          </button>
+        ))}
+      </div>
+      {activePreset !== undefined && (
+        <p className="muted tiny preset-summary">
+          {activePreset.summary}
+          {activePreset.todo !== null && (
+            <>
+              <br />
+              <span className="warn">{activePreset.todo}</span>
+            </>
+          )}
+        </p>
+      )}
 
       <h3>対象の弾とパック数</h3>
       <ul className="set-list">
@@ -80,7 +118,7 @@ export function SealedSetup({ onStart }: Props) {
         <input
           type="checkbox"
           checked={config.includeBasic}
-          onChange={(e) => setConfig({ ...config, includeBasic: e.target.checked })}
+          onChange={(e) => updateConfig({ ...config, includeBasic: e.target.checked })}
         />
         <span>
           ベーシックカードを使う

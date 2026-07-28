@@ -64,6 +64,12 @@ export function setName(setId: number): string {
   return db.setNames[String(setId)] ?? `弾 ${setId}`;
 }
 
+/** 弾名から弾IDを引く。見つからなければ undefined（弾IDをハードコードしないため） */
+export function findSetIdByName(name: string): number | undefined {
+  const entry = Object.entries(db.setNames).find(([, value]) => value === name);
+  return entry === undefined ? undefined : Number(entry[0]);
+}
+
 /** カードDBの生成日時（ISO8601）。画面に出して鮮度を示す */
 export function generatedAt(): string {
   return db.generatedAt;

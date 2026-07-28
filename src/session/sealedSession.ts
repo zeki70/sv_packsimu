@@ -1,5 +1,5 @@
 import { buildPool, type BuildPoolResult } from '../domain/pool';
-import { mulberry32 } from '../domain/rng';
+import { deriveSeed, mulberry32 } from '../domain/rng';
 import {
   basicPoolCards,
   buildSetIndex,
@@ -70,8 +70,32 @@ export function buildPoolFor(session: SealedSession): BuildPoolResult {
     packCounts: new Map(setIds.map((id) => [id, packCounts[id] ?? 0])),
     includeBasic,
     basicCards: basicPoolCards(),
-    rng: mulberry32(session.seed),
+    // 弾ごとに副シードを作る。あとからパック数を増やしても既存分は変わらない
+    rngFor: (setId) => mulberry32(deriveSeed(session.seed, setId)),
   });
+}
+
+/**
+ * 追加開封。指定した弾のパック数を増やした設定を返す。
+ *
+ * 既に開封したカードはシードとパック数から決まるので、増やしても先頭は同じ結果になる。
+ * つまり「引き直し」ではなく純粋な追加になる。
+ */
+export function withExtraPacks(
+  config: SealedConfig,
+  extra: ReadonlyMap<number, number>,
+): SealedConfig {
+  const packCounts = { ...config.packCounts };
+  const setIds = [...config.setIds];
+
+  for (const [setId, count] of extra) {
+    if (count <= 0) continue;
+    const next = Math.min((packCounts[setId] ?? 0) + count, MAX_PACKS_PER_SET);
+    packCounts[setId] = next;
+    if (!setIds.includes(setId)) setIds.push(setId);
+  }
+
+  return { ...config, setIds: setIds.sort((a, b) => a - b), packCounts };
 }
 
 export function totalPackCount(config: SealedConfig): number {

@@ -61,7 +61,8 @@
   /* 固定ヘッダーの高さ。sticky 要素はこのぶん下げて重ならないようにする */
   --header-h: 3.6rem;
 
-  color-scheme: dark;
+  /* スクロールバーや数値入力のスピナーなど、ブラウザ標準UIの明暗を合わせる */
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -756,3 +757,6 @@ input[type="checkbox"] { accent-color: var(--color-accent); width: 1rem; height:
   .filter-label { min-width: 100%; }
   .card-grid { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); }
 }
+
+.preset-summary { margin: 0 0 var(--space-md); }
+.set-label .tiny { color: var(--color-text-muted); margin-left: .5rem; }

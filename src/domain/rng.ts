@@ -23,6 +23,20 @@ export function mulberry32(seed: number): Rng {
 export const systemRng: Rng = () => Math.random();
 
 /**
+ * 1つのシードから、用途ごとに独立した副シードを作る。
+ *
+ * 単純な `seed ^ salt` だと salt が近いとき系列が似てしまうため、
+ * murmur3 の finalizer で混ぜてから返す。
+ */
+export function deriveSeed(seed: number, salt: number): number {
+  let h = (seed ^ 0x9e3779b9) >>> 0;
+  h = Math.imul(h ^ (salt >>> 0), 0x85ebca6b) >>> 0;
+  h = (h ^ (h >>> 13)) >>> 0;
+  h = Math.imul(h, 0xc2b2ae35) >>> 0;
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
+/**
  * 重み付き抽選。weights の合計が 1 未満でも、浮動小数の誤差で
  * どれも選ばれないことがないよう最後の要素にフォールバックする。
  */

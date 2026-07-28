@@ -3,6 +3,7 @@ import { SealedSetup } from './components/SealedSetup';
 import { PoolView } from './components/PoolView';
 import { DeckBuilder } from './components/DeckBuilder';
 import { DeckPreviewModal } from './components/DeckPreviewModal';
+import { AddPacksModal } from './components/AddPacksModal';
 import type { Deck } from './domain/deckRules';
 import {
   buildPoolFor,
@@ -12,6 +13,7 @@ import {
   loadSession,
   saveDeck,
   saveSession,
+  withExtraPacks,
   type SealedConfig,
   type SealedSession,
 } from './session/sealedSession';
@@ -34,6 +36,7 @@ export function App() {
   const [classId, setClassId] = useState<number | null>(restored.classId);
   const [deck, setDeck] = useState<Deck>(restored.deck);
   const [showPreview, setShowPreview] = useState(false);
+  const [showAddPacks, setShowAddPacks] = useState(false);
 
   const deckTotal = [...deck.values()].reduce((sum, n) => sum + n, 0);
 
@@ -95,6 +98,22 @@ export function App() {
     persistDeck(classId, nextDeck);
   };
 
+  /**
+   * 追加開封。パック数を増やすだけなので、既に持っているカードもデッキも失われない。
+   * シードは変えない（変えると先頭の開封結果まで変わってしまう）。
+   */
+  const handleAddPacks = (extra: ReadonlyMap<number, number>): void => {
+    if (session === null) return;
+    const next: SealedSession = {
+      ...session,
+      config: withExtraPacks(session.config, extra),
+    };
+    saveSession(next);
+    setSession(next);
+    setShowAddPacks(false);
+    setView('pool');
+  };
+
   return (
     <div className="app">
       {/* どの画面からでも触れるよう、やり直しはヘッダーに置いて固定表示する */}
@@ -114,6 +133,9 @@ export function App() {
             >
               デッキ確認 {deckTotal > 0 && <span className="muted">({deckTotal})</span>}
             </button>
+          )}
+          {session !== null && (
+            <button onClick={() => setShowAddPacks(true)}>追加で開ける</button>
           )}
           {session !== null && <button onClick={handleReset}>開封をやり直す</button>}
         </div>
@@ -142,6 +164,14 @@ export function App() {
       {/* ヘッダーから開くので、デッキ構築画面以外でも確認できる */}
       {showPreview && classId !== null && (
         <DeckPreviewModal deck={deck} classId={classId} onClose={() => setShowPreview(false)} />
+      )}
+
+      {showAddPacks && session !== null && (
+        <AddPacksModal
+          config={session.config}
+          onApply={handleAddPacks}
+          onClose={() => setShowAddPacks(false)}
+        />
       )}
 
       <footer className="app-footer">
