@@ -36,7 +36,8 @@ export interface SealedSession {
 }
 
 export interface SavedDeck {
-  readonly classId: number;
+  /** クラス未選択の状態も保存する（デッキを破棄した直後など） */
+  readonly classId: number | null;
   /** cardId → 投入枚数 */
   readonly cards: Readonly<Record<number, number>>;
 }

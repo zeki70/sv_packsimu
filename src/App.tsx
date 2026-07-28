@@ -33,7 +33,6 @@ export function App() {
   const [restored] = useState(restoreDeck);
   const [classId, setClassId] = useState<number | null>(restored.classId);
   const [deck, setDeck] = useState<Deck>(restored.deck);
-  const [savedAt, setSavedAt] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
 
   const deckTotal = [...deck.values()].reduce((sum, n) => sum + n, 0);
@@ -73,11 +72,27 @@ export function App() {
     setView('setup');
   };
 
-  const handleSave = (nextClassId: number, nextDeck: Deck): void => {
-    setClassId(nextClassId);
-    setDeck(nextDeck);
+  /**
+   * デッキは変更のたびに自動保存する。
+   * 以前は「保存」ボタンを押したときだけ localStorage に書いていたが、
+   * 40枚ちょうどにならないとボタンが押せず、作りかけがリロードで消えていた。
+   */
+  const persistDeck = (nextClassId: number | null, nextDeck: Deck): void => {
+    if (nextClassId === null) {
+      saveDeck({ classId: null, cards: {} });
+      return;
+    }
     saveDeck({ classId: nextClassId, cards: Object.fromEntries(nextDeck) });
-    setSavedAt(new Date().toLocaleTimeString('ja-JP'));
+  };
+
+  const handleClassChange = (nextClassId: number | null): void => {
+    setClassId(nextClassId);
+    persistDeck(nextClassId, nextClassId === null ? new Map() : deck);
+  };
+
+  const handleDeckChange = (nextDeck: Deck): void => {
+    setDeck(nextDeck);
+    persistDeck(classId, nextDeck);
   };
 
   return (
@@ -116,14 +131,12 @@ export function App() {
             pool={poolResult.pool}
             classId={classId}
             deck={deck}
-            onClassChange={setClassId}
-            onDeckChange={setDeck}
+            onClassChange={handleClassChange}
+            onDeckChange={handleDeckChange}
             onBack={() => setView('pool')}
-            onSave={handleSave}
           />
         )}
 
-        {savedAt !== null && <p className="toast">デッキを保存しました（{savedAt}）</p>}
       </main>
 
       {/* ヘッダーから開くので、デッキ構築画面以外でも確認できる */}

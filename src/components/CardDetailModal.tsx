@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import type { LiteCard } from '../data/cardTypes';
-import { setName } from '../data/cardDatabase';
+import { relatedCards, setName } from '../data/cardDatabase';
 import { RARITY_NAME, RARITY_CLASS, className, typeLabel } from '../ui/labels';
 import type { Rarity } from '../domain/types';
 import { CardImage } from './CardImage';
@@ -25,6 +25,7 @@ export function CardDetailModal({ card, owned, onClose }: Props) {
   }, [onClose]);
 
   const rarity = card.rarity as Rarity;
+  const tokens = useMemo(() => relatedCards(card), [card]);
 
   return (
     <div className="modal-backdrop" onClick={onClose} role="presentation">
@@ -90,6 +91,40 @@ export function CardDetailModal({ card, owned, onClose }: Props) {
               <section className="detail-skill">
                 <h4>進化後</h4>
                 <p>{card.evoSkillText}</p>
+              </section>
+            )}
+
+            {/* クレスト・結晶・信仰・アクセラレート */}
+            {(card.specificEffects ?? []).map((effect) => (
+              <section className="detail-skill" key={`${effect.typeName}-${effect.skillText}`}>
+                <h4>
+                  <span className="detail-effect-label">{effect.typeName}</span>
+                  {effect.cost !== undefined && `コスト ${effect.cost}`}
+                </h4>
+                <p>{effect.skillText}</p>
+              </section>
+            ))}
+
+            {tokens.length > 0 && (
+              <section className="detail-skill">
+                <h4>生成されるカード</h4>
+                <ul className="token-grid">
+                  {tokens.map((token) => (
+                    <li
+                      key={token.cardId}
+                      className="card-tile"
+                      title={`${token.name}（${token.cost}コスト${
+                        token.type === FOLLOWER_TYPE ? ` / ${token.atk}・${token.life}` : ''
+                      }）\n${token.skillText}`}
+                    >
+                      <CardImage
+                        cardId={token.cardId}
+                        imageHash={token.imageHash}
+                        name={token.name}
+                      />
+                    </li>
+                  ))}
+                </ul>
               </section>
             )}
           </div>

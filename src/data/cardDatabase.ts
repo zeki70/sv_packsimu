@@ -4,6 +4,8 @@ import { Rarity, type PoolCard, type SetCardIndex } from '../domain/types';
 
 /** ベーシック弾。パック排出が存在せず、全プレイヤーが初期所持している扱いにする */
 export const BASIC_SET_ID = 10000;
+/** トークン置き場の擬似弾。閲覧はできるが排出・デッキ構築の対象外 */
+export const TOKEN_SET_ID = 90000;
 
 const db = rawDb as LiteCardDb;
 
@@ -20,18 +22,42 @@ function isRarity(value: number): value is Rarity {
 
 const cardById = new Map<number, LiteCard>(db.cards.map((c) => [c.cardId, c]));
 
+/** トークンは詳細表示のためだけに DB へ入れてある。一覧・排出からは必ず外す */
+const playableCards: readonly LiteCard[] = db.cards.filter((c) => !c.isToken);
+
 const packSetIdsAsc: readonly number[] = [
-  ...new Set(db.cards.map((c) => c.setId).filter((id) => id !== BASIC_SET_ID)),
+  ...new Set(
+    playableCards.map((c) => c.setId).filter((id) => id !== BASIC_SET_ID && id !== TOKEN_SET_ID),
+  ),
 ].sort((a, b) => a - b);
 
 const setIndexCache = new Map<number, SetCardIndex>();
 
+/** デッキに入れられるカードだけを返す（トークンを含まない） */
 export function allCards(): readonly LiteCard[] {
-  return db.cards;
+  return playableCards;
 }
 
+/** トークンも引ける。詳細表示で「生成されるトークン」を辿るため */
 export function getCard(cardId: number): LiteCard | undefined {
   return cardById.get(cardId);
+}
+
+/**
+ * このカードが生成するトークンなどの関連カード。
+ * 自分自身とスタイル違い（同名）は除き、解決できた分だけ返す。
+ */
+export function relatedCards(card: LiteCard): readonly LiteCard[] {
+  const seen = new Set<number>([card.cardId]);
+  const result: LiteCard[] = [];
+
+  for (const id of card.relatedCardIds ?? []) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const related = cardById.get(id);
+    if (related !== undefined && related.name !== card.name) result.push(related);
+  }
+  return result;
 }
 
 export function setName(setId: number): string {
@@ -78,7 +104,7 @@ export function buildSetIndex(setId: number): SetCardIndex {
     ALL_RARITIES.map((rarity) => [rarity, [] as PoolCard[]]),
   ) as Record<Rarity, PoolCard[]>;
 
-  for (const card of db.cards) {
+  for (const card of playableCards) {
     if (card.setId !== setId) continue;
     if (!isRarity(card.rarity)) continue;
     byRarity[card.rarity].push(toPoolCard(card));
@@ -90,7 +116,7 @@ export function buildSetIndex(setId: number): SetCardIndex {
 }
 
 export function basicPoolCards(): readonly PoolCard[] {
-  return db.cards.filter((c) => c.setId === BASIC_SET_ID).map(toPoolCard);
+  return playableCards.filter((c) => c.setId === BASIC_SET_ID).map(toPoolCard);
 }
 
 /**

@@ -25,7 +25,6 @@ interface Props {
   readonly onClassChange: (classId: number | null) => void;
   readonly onDeckChange: (deck: Deck) => void;
   readonly onBack: () => void;
-  readonly onSave: (classId: number, deck: Deck) => void;
 }
 
 const COSTS = [0, 1, 2, 3, 4, 5, 6, 7] as const; // 7 は「7以上」
@@ -38,7 +37,6 @@ export function DeckBuilder({
   onClassChange,
   onDeckChange,
   onBack,
-  onSave,
 }: Props) {
   const [search, setSearch] = useState('');
   const [costFilter, setCostFilter] = useState<number | null>(null);
@@ -165,13 +163,6 @@ export function DeckBuilder({
         <div className="builder-actions">
           <button onClick={requestClassChange}>クラスを変える</button>
           <button onClick={onBack}>プールを見る</button>
-          <button
-            className="primary"
-            disabled={validation?.valid !== true}
-            onClick={() => onSave(classId, deck)}
-          >
-            保存する
-          </button>
         </div>
       </header>
 
