@@ -346,22 +346,48 @@ input[type="number"] { width: 4.5rem; }
 }
 
 /*
- * デッキ行のサムネイル。
- * カード画像(530x687)を縦5分割し、上から2番目の帯だけを使う。
+ * デッキ行のイラスト帯。
  *
- * 帯の比率は 530 : (687/5) = 530 : 137.4。
- * object-fit: cover で幅いっぱいに伸ばすと画像高さは要素高さの5倍になるので、
- * 帯2の先頭（画像の20%地点）を出すためのオフセットは 20% / (100% - 20%) = 25%。
+ * カード画像は 530x687。枠を映さないため、イラスト領域だけを切り出す。
+ * レアリティで枠の太さが違う（レジェンドは細く、ブロンズ/ゴールドは太い）ので、
+ * いちばん内側になるブロンズ/ゴールドの内寸に合わせてある。実画像で検証済み。
+ *
+ *   イラスト領域: 横 14.5%〜85.5%（幅71%）/ 縦 19%〜87%（上端は名前帯の下）
+ *   縦を5分割 → 1本あたり 68% / 5 = 13.6%
+ *   上から2本目 = カード全体の 32.6%〜46.2%
+ *
+ * 表示幅 104px に対する実寸:
+ *   画像全体の幅   = 104 / 0.71          = 146.5px
+ *   画像全体の高さ = 146.5 * 687 / 530   = 189.9px
+ *   帯の高さ       = 189.9 * 0.136       =  25.8px
+ *   左オフセット   = -146.5 * 0.145      = -21.2px
+ *   上オフセット   = -189.9 * 0.326      = -61.9px
+ *
+ * 位置を上下させたいときは top だけを変える。
+ * 1本ぶん下げる = 189.9 * 0.136 = 25.8px 引く。
  */
-.deck-thumb {
+.art-band {
   flex: none;
+  display: block;
+  position: relative;
   width: 104px;
-  height: auto;
-  aspect-ratio: 530 / 137.4;
-  object-fit: cover;
-  object-position: center 25%;
+  height: 25.8px;
+  overflow: hidden;
   border-radius: 3px;
+  background: var(--panel-2);
 }
+
+.art-band .card-image {
+  position: absolute;
+  width: 146.5px;
+  height: auto;
+  aspect-ratio: 530 / 687;
+  left: -21.2px;
+  top: -61.9px;
+  object-fit: fill;
+}
+
+.art-band--missing { background: var(--panel-2); }
 
 .clear-deck { width: 100%; margin-top: .6rem; font-size: .82rem; }
 .deck-list li.r-bronze { border-left-color: var(--bronze); }

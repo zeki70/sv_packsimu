@@ -274,7 +274,7 @@ export function DeckBuilder({
                   cardId={row.info!.cardId}
                   imageHash={row.info!.imageHash}
                   name={row.info!.name}
-                  className="deck-thumb"
+                  variant="band"
                 />
                 <span className="deck-cost">{row.info!.cost}</span>
                 <span className="deck-name" title={row.info!.name}>

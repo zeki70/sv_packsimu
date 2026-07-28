@@ -5,6 +5,11 @@ interface Props {
   readonly cardId: number;
   readonly imageHash: string;
   readonly name: string;
+  /**
+   * full — カード画像をそのまま表示する
+   * band — 枠を除いたイラスト部分を縦5分割し、その1本だけを帯として表示する（デッキ一覧用）
+   */
+  readonly variant?: 'full' | 'band';
   readonly className?: string;
 }
 
@@ -15,19 +20,18 @@ interface Props {
  * 無ければ公式CDNの原寸PNGにフォールバックする。
  * 原寸は1枚あたり平均562KB あるため、一覧表示で多用しないこと。
  */
-export function CardImage({ cardId, imageHash, name, className }: Props) {
+export function CardImage({ cardId, imageHash, name, variant = 'full', className }: Props) {
   const localSrc = `${import.meta.env.BASE_URL}cards/${cardId}.webp`;
   const [src, setSrc] = useState(localSrc);
 
   if (imageHash === '') {
-    return (
-      <div className={`card-image card-image--missing ${className ?? ''}`} aria-label={name} />
-    );
+    const missingClass = variant === 'band' ? 'art-band art-band--missing' : 'card-image card-image--missing';
+    return <div className={`${missingClass} ${className ?? ''}`} aria-label={name} />;
   }
 
-  return (
+  const img = (
     <img
-      className={`card-image ${className ?? ''}`}
+      className={variant === 'band' ? 'card-image' : `card-image ${className ?? ''}`}
       src={src}
       alt={name}
       loading="lazy"
@@ -39,4 +43,9 @@ export function CardImage({ cardId, imageHash, name, className }: Props) {
       }}
     />
   );
+
+  if (variant === 'band') {
+    return <span className={`art-band ${className ?? ''}`}>{img}</span>;
+  }
+  return img;
 }
