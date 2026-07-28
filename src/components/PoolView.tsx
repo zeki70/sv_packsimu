@@ -4,7 +4,9 @@ import { Rarity, NEUTRAL_CLASS_ID } from '../domain/types';
 import { getCard, setName } from '../data/cardDatabase';
 import { CLASSES, RARITY_CLASS, RARITY_NAME, RARITY_ORDER, className } from '../ui/labels';
 import { SORT_MODE_LABELS, filterAndSortPool, type PoolSortMode } from '../ui/poolSort';
+import type { LiteCard } from '../data/cardTypes';
 import { CardImage } from './CardImage';
+import { CardDetailModal } from './CardDetailModal';
 
 interface Props {
   readonly result: BuildPoolResult;
@@ -18,6 +20,7 @@ export function PoolView({ result, onBuildDeck, onReset }: Props) {
   const [rarityFilter, setRarityFilter] = useState<Rarity | null>(null);
   const [classFilter, setClassFilter] = useState<number | null>(null);
   const [sortMode, setSortMode] = useState<PoolSortMode>('cost');
+  const [detailCard, setDetailCard] = useState<LiteCard | null>(null);
 
   const stats = useMemo(() => {
     const byRarity = new Map<Rarity, number>();
@@ -139,16 +142,30 @@ export function PoolView({ result, onBuildDeck, onReset }: Props) {
           const info = getCard(entry.card.cardId);
           if (info === undefined) return null;
           return (
-            <li key={entry.card.cardId} className={`card-tile ${RARITY_CLASS[entry.card.rarity]}`}>
+            <li
+              key={entry.card.cardId}
+              className={`card-tile ${RARITY_CLASS[entry.card.rarity]}`}
+              // コストとカード名は画像に入っているので、ホバー時の補足だけにする
+              title={`${info.name}（${info.cost}コスト / ${className(info.classId)}）×${entry.count}\n右クリックで詳細`}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setDetailCard(info);
+              }}
+            >
               <CardImage cardId={info.cardId} imageHash={info.imageHash} name={info.name} />
-              <span className="card-cost">{info.cost}</span>
               <span className="card-count">×{entry.count}</span>
-              <span className="card-name">{info.name}</span>
-              <span className="card-meta">{className(info.classId)}</span>
             </li>
           );
         })}
       </ul>
+
+      {detailCard !== null && (
+        <CardDetailModal
+          card={detailCard}
+          owned={result.pool.get(detailCard.cardId)?.count ?? 0}
+          onClose={() => setDetailCard(null)}
+        />
+      )}
     </section>
   );
 }

@@ -80,15 +80,15 @@ export function DeckPreviewModal({ deck, classId, onClose }: Props) {
             <li
               key={row.cardId}
               className={`card-tile ${RARITY_CLASS[row.info!.rarity as Rarity]}`}
+              // コストとカード名は画像に入っているので、ホバー時の補足だけにする
+              title={`${row.info!.name}（${row.info!.cost}コスト）×${row.count}`}
             >
               <CardImage
                 cardId={row.info!.cardId}
                 imageHash={row.info!.imageHash}
                 name={row.info!.name}
               />
-              <span className="card-cost">{row.info!.cost}</span>
               <span className="card-count">×{row.count}</span>
-              <span className="card-name">{row.info!.name}</span>
             </li>
           ))}
           {rows.length === 0 && <li className="muted">デッキが空です</li>}

@@ -197,7 +197,18 @@ input[type="number"] { width: 4.5rem; }
 .chip--on { background: var(--accent); border-color: var(--accent); color: #06101f; font-weight: 700; }
 
 .search { flex: 1; min-width: 12rem; }
-.owned-toggle { display: flex; align-items: center; gap: .4rem; font-size: .82rem; color: var(--muted); }
+
+/* デッキ構築中、スクロールしても検索と絞り込みが画面に残るようにする */
+.pool-filters {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg);
+  padding: .5rem 0;
+  margin-bottom: .25rem;
+  border-bottom: 1px solid var(--line);
+}
+.pool-filters .filter-row:last-child { margin-bottom: 0; }
 
 /* ---------- card grid ---------- */
 
@@ -240,25 +251,20 @@ input[type="number"] { width: 4.5rem; }
 }
 .card-image--missing { display: block; width: 100%; aspect-ratio: 530 / 687; }
 
-.card-name {
-  display: block;
-  padding: .2rem .35rem 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.card-meta { display: block; padding: 0 .35rem .3rem; color: var(--muted); }
-
-.card-count, .card-cost {
+/*
+ * コストとカード名はカード画像自体に入っているので重ねて表示しない。
+ * 画像から読み取れない「枚数」だけをバッジで出す。
+ */
+.card-count {
   position: absolute;
+  top: .25rem;
+  right: .25rem;
   font-size: .72rem;
   font-weight: 700;
   padding: .05rem .4rem;
   border-radius: 4px;
   background: rgba(6, 12, 24, .85);
 }
-.card-count { top: .25rem; right: .25rem; }
-.card-cost { top: .25rem; left: .25rem; background: rgba(74, 158, 255, .9); color: #06101f; }
 
 .filter-label {
   font-size: .78rem;
@@ -462,6 +468,76 @@ input[type="number"] { width: 4.5rem; }
 }
 .modal-header h3 { margin: 0; }
 .modal-header .ok { color: var(--ok); }
+
+/* カード詳細 */
+.modal--detail { width: min(680px, 100%); }
+
+.detail-body {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+.detail-art .card-image { border-radius: 6px; }
+
+.detail-stats {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-bottom: .75rem;
+}
+.detail-cost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #06101f;
+  font-weight: 700;
+}
+.detail-battle { font-size: 1.1rem; font-weight: 700; }
+.detail-rarity {
+  font-size: .78rem;
+  padding: .1rem .6rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+}
+.detail-rarity.r-bronze { border-color: var(--bronze); color: var(--bronze); }
+.detail-rarity.r-silver { border-color: var(--silver); color: var(--silver); }
+.detail-rarity.r-gold   { border-color: var(--gold); color: var(--gold); }
+.detail-rarity.r-legend { border-color: var(--legend); color: var(--legend); }
+
+.detail-meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: .15rem .75rem;
+  margin: 0 0 1rem;
+  font-size: .82rem;
+}
+.detail-meta dt { color: var(--muted); }
+.detail-meta dd { margin: 0; }
+
+.detail-skill { margin-bottom: .75rem; }
+.detail-skill h4 {
+  margin: 0 0 .25rem;
+  font-size: .8rem;
+  color: var(--muted);
+}
+.detail-skill p {
+  margin: 0;
+  font-size: .88rem;
+  white-space: pre-wrap;
+  background: var(--panel-2);
+  border-radius: 6px;
+  padding: .5rem .65rem;
+}
+
+@media (max-width: 640px) {
+  .detail-body { grid-template-columns: 1fr; }
+  .detail-art { max-width: 220px; margin: 0 auto; }
+}
 
 .preview-grid {
   list-style: none;

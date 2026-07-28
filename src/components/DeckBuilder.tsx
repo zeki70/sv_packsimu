@@ -7,6 +7,8 @@ import { getCard } from '../data/cardDatabase';
 import { CLASSES, RARITY_CLASS, className, typeKey, typeLabel } from '../ui/labels';
 import { CardImage } from './CardImage';
 import { DeckPreviewModal } from './DeckPreviewModal';
+import { CardDetailModal } from './CardDetailModal';
+import type { LiteCard } from '../data/cardTypes';
 
 interface Props {
   readonly pool: CardPool;
@@ -34,8 +36,8 @@ export function DeckBuilder({
   const [search, setSearch] = useState('');
   const [costFilter, setCostFilter] = useState<number | null>(null);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
-  const [ownedOnly, setOwnedOnly] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
+  const [detailCard, setDetailCard] = useState<LiteCard | null>(null);
 
   const deckTotal = [...deck.values()].reduce((sum, n) => sum + n, 0);
 
@@ -59,7 +61,6 @@ export function DeckBuilder({
         if (query !== '' && !info.name.includes(query) && !info.skillText.includes(query)) {
           return false;
         }
-        if (ownedOnly && maxCopiesOf(pool, entry.card.cardId) === 0) return false;
         return true;
       })
       .sort((a, b) => {
@@ -67,7 +68,7 @@ export function DeckBuilder({
         const bi = getCard(b.card.cardId)!;
         return ai.cost - bi.cost || a.card.cardId - b.card.cardId;
       });
-  }, [available, pool, search, costFilter, typeFilter, ownedOnly]);
+  }, [available, search, costFilter, typeFilter]);
 
   const validation = useMemo(
     () => (classId === null ? null : validateDeck(deck, pool, classId)),
@@ -175,52 +176,46 @@ export function DeckBuilder({
 
       <div className="builder-body">
         <div className="pool-pane">
-          <div className="filter-row">
-            <input
-              className="search"
-              type="search"
-              placeholder="カード名・効果テキストで検索"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <label className="owned-toggle">
+          {/* スクロールしても検索と絞り込みが画面に残るように固定する */}
+          <div className="pool-filters">
+            <div className="filter-row">
               <input
-                type="checkbox"
-                checked={ownedOnly}
-                onChange={(e) => setOwnedOnly(e.target.checked)}
+                className="search"
+                type="search"
+                placeholder="カード名・効果テキストで検索"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
               />
-              所持しているカードだけ
-            </label>
-          </div>
+              <span className="muted tiny">{visible.length} 種</span>
+            </div>
 
-          <div className="filter-row">
-            <button
-              className={costFilter === null ? 'chip chip--on' : 'chip'}
-              onClick={() => setCostFilter(null)}
-            >
-              コスト全部
-            </button>
-            {COSTS.map((cost) => (
+            <div className="filter-row">
               <button
-                key={cost}
-                className={costFilter === cost ? 'chip chip--on' : 'chip'}
-                onClick={() => setCostFilter(costFilter === cost ? null : cost)}
+                className={costFilter === null ? 'chip chip--on' : 'chip'}
+                onClick={() => setCostFilter(null)}
               >
-                {cost === 7 ? '7+' : cost}
+                コスト全部
               </button>
-            ))}
-            {TYPE_FILTERS.map((key) => (
-              <button
-                key={key}
-                className={typeFilter === key ? 'chip chip--on' : 'chip'}
-                onClick={() => setTypeFilter(typeFilter === key ? null : key)}
-              >
-                {typeLabel(key === 'follower' ? 1 : key === 'amulet' ? 2 : 4)}
-              </button>
-            ))}
+              {COSTS.map((cost) => (
+                <button
+                  key={cost}
+                  className={costFilter === cost ? 'chip chip--on' : 'chip'}
+                  onClick={() => setCostFilter(costFilter === cost ? null : cost)}
+                >
+                  {cost === 7 ? '7+' : cost}
+                </button>
+              ))}
+              {TYPE_FILTERS.map((key) => (
+                <button
+                  key={key}
+                  className={typeFilter === key ? 'chip chip--on' : 'chip'}
+                  onClick={() => setTypeFilter(typeFilter === key ? null : key)}
+                >
+                  {typeLabel(key === 'follower' ? 1 : key === 'amulet' ? 2 : 4)}
+                </button>
+              ))}
+            </div>
           </div>
-
-          <p className="muted tiny">{visible.length} 種を表示中</p>
 
           <ul className="card-grid">
             {visible.map((entry) => {
@@ -239,16 +234,15 @@ export function DeckBuilder({
                     onClick={() => changeCount(entry.card.cardId, 1)}
                     onContextMenu={(e) => {
                       e.preventDefault();
-                      changeCount(entry.card.cardId, -1);
+                      setDetailCard(info);
                     }}
-                    title={`${info.name}（所持 ${entry.count} 枚 / 投入上限 ${limit} 枚）\n左クリックで追加・右クリックで削除`}
+                    // コストとカード名は画像に入っているので、ホバー時の補足だけにする
+                    title={`${info.name}（${info.cost}コスト / 所持 ${entry.count} 枚 / 投入上限 ${limit} 枚）\n左クリックで追加・右クリックで詳細`}
                   >
                     <CardImage cardId={info.cardId} imageHash={info.imageHash} name={info.name} />
-                    <span className="card-cost">{info.cost}</span>
                     <span className="card-count">
                       {inDeck}/{limit}
                     </span>
-                    <span className="card-name">{info.name}</span>
                   </button>
                 </li>
               );
@@ -269,7 +263,14 @@ export function DeckBuilder({
 
           <ul className="deck-list">
             {deckList.map((row) => (
-              <li key={row.cardId} className={RARITY_CLASS[row.info!.rarity as Rarity]}>
+              <li
+                key={row.cardId}
+                className={RARITY_CLASS[row.info!.rarity as Rarity]}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setDetailCard(row.info!);
+                }}
+              >
                 <CardImage
                   cardId={row.info!.cardId}
                   imageHash={row.info!.imageHash}
@@ -312,6 +313,14 @@ export function DeckBuilder({
 
       {showPreview && (
         <DeckPreviewModal deck={deck} classId={classId} onClose={() => setShowPreview(false)} />
+      )}
+
+      {detailCard !== null && (
+        <CardDetailModal
+          card={detailCard}
+          owned={pool.get(detailCard.cardId)?.count ?? 0}
+          onClose={() => setDetailCard(null)}
+        />
       )}
     </section>
   );
