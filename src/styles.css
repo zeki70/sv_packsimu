@@ -1,40 +1,40 @@
 /*
  * Design Token
  *
- * 方針: ミニマル × フラット × クリーン。明るい紙色ベース。
+ * 方針: ミニマル × フラット。配色はダークベース。
  *
- * 意図的に使わないもの（「AI感」と「ダークなオタクっぽさ」を両方避けるため）:
+ * 意図的に使わないもの:
  *   - グラデーション / 発光 / 半透明パネル
  *   - 影（構造はヘアラインの境界線だけで作る）
  *   - 16px 以上の大きな角丸
- *   - 純白 #FFF 背景と冷たいグレー
  *
- * 色はカード画像とレアリティにだけ持たせ、UI 側は無彩色 ＋ 藍1色に抑える。
+ * 色はカード画像とレアリティにだけ持たせ、UI 側は無彩色 ＋ アクセント1色に抑える。
  * 生値をコンポーネントに直書きせず、必ずここのトークンを参照する。
+ * 明暗を入れ替えたいときはこのブロックの値だけを差し替えれば済む。
  */
 :root {
   /* color — 役割ごとに定義する */
-  --color-bg: #faf9f6;          /* わずかに温かい紙色。純白より硬くならない */
-  --color-surface: #ffffff;     /* カード・パネル */
-  --color-surface-2: #f2f0ec;   /* 一段沈めた面（非活性チップ・入力欄の下地） */
-  --color-border: #e4e1da;      /* ヘアライン。影の代わりに構造を作る */
-  --color-border-strong: #cfcbc1;
-  --color-text: #1c1b18;        /* 墨に近い黒。#000 は硬すぎる */
-  --color-text-muted: #6e6a62;
-  --color-accent: #1f3a5f;      /* 藍。彩度が低く深いのでレアリティ色と衝突しない */
-  --color-accent-hover: #16294a;
-  --color-accent-weak: #ebeef2;
-  --color-on-accent: #ffffff;
-  --color-error: #a8342b;
-  --color-error-bg: #fbf1f0;
-  --color-warn: #8a5a12;
-  --color-ok: #2f6b4f;
+  --color-bg: #0f1420;          /* 背景 */
+  --color-surface: #171d2c;     /* カード・パネル */
+  --color-surface-2: #1e2637;   /* 一段持ち上げた面（非活性チップ・入力欄の下地） */
+  --color-border: #2c3549;      /* ヘアライン。影の代わりに構造を作る */
+  --color-border-strong: #3d4a66;
+  --color-text: #e8ecf4;
+  --color-text-muted: #8b95ab;
+  --color-accent: #4a9eff;
+  --color-accent-hover: #6fb2ff;
+  --color-accent-weak: #1b2b45;
+  --color-on-accent: #06101f;
+  --color-error: #ff6b6b;
+  --color-error-bg: rgba(255, 107, 107, .12);
+  --color-warn: #ffb454;
+  --color-ok: #4ade80;
 
   /* rarity — カード自体の属性なので色で表現する */
-  --color-bronze: #96603a;
-  --color-silver: #78838f;
-  --color-gold: #ab7f1c;
-  --color-legend: #b0492a;
+  --color-bronze: #b87333;
+  --color-silver: #a8b4c4;
+  --color-gold: #e5b53a;
+  --color-legend: #d4633a;
 
   /* typography */
   --font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP",
@@ -58,7 +58,7 @@
   /* 固定ヘッダーの高さ。sticky 要素はこのぶん下げて重ならないようにする */
   --header-h: 3.6rem;
 
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -427,10 +427,10 @@ input[type="checkbox"] { accent-color: var(--color-accent); width: 1rem; height:
   font-size: .75rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: var(--color-on-accent);
+  color: var(--color-text);
   padding: .05rem .4rem;
   border-radius: var(--radius-sm);
-  background: rgba(28, 27, 24, .82);
+  background: rgba(6, 12, 24, .85);
 }
 
 /* ---------- class select ---------- */
@@ -604,7 +604,7 @@ input[type="checkbox"] { accent-color: var(--color-accent); width: 1rem; height:
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(28, 27, 24, .45);
+  background: rgba(4, 8, 16, .72);
   display: flex;
   align-items: center;
   justify-content: center;
