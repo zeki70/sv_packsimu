@@ -1,0 +1,10 @@
+node_modules/
+dist/
+
+# 縮小WebP は `npm run sync:images` で再生成できるが、
+# GitHub Pages で配信するため意図的にコミットする。
+# 除外したい場合はここのコメントを外すこと。
+# public/cards/
+
+*.local
+.DS_Store

@@ -1,0 +1,113 @@
+import { buildPool, type BuildPoolResult } from '../domain/pool';
+import { mulberry32 } from '../domain/rng';
+import {
+  basicPoolCards,
+  buildSetIndex,
+  latestPackSetIds,
+} from '../data/cardDatabase';
+
+/** 既定で対象にする弾数 */
+export const DEFAULT_SET_COUNT = 6;
+/** 既定の1弾あたりパック数 */
+export const DEFAULT_PACKS_PER_SET = 8;
+/** 1弾あたりに指定できるパック数の上限（開封演出とメモリの現実的な上限） */
+export const MAX_PACKS_PER_SET = 100;
+
+const SESSION_KEY = 'sv_packsimu_session';
+const DECK_KEY = 'sv_packsimu_deck';
+
+export interface SealedConfig {
+  readonly setIds: readonly number[];
+  /** setId → パック数 */
+  readonly packCounts: Readonly<Record<number, number>>;
+  readonly includeBasic: boolean;
+}
+
+export interface SealedSession {
+  /** 同じシードなら同じカードプールが再現される */
+  readonly seed: number;
+  readonly config: SealedConfig;
+  readonly createdAt: string;
+}
+
+export interface SavedDeck {
+  readonly classId: number;
+  /** cardId → 投入枚数 */
+  readonly cards: Readonly<Record<number, number>>;
+}
+
+export function defaultConfig(): SealedConfig {
+  const setIds = latestPackSetIds(DEFAULT_SET_COUNT);
+  return {
+    setIds,
+    packCounts: Object.fromEntries(setIds.map((id) => [id, DEFAULT_PACKS_PER_SET])),
+    includeBasic: false,
+  };
+}
+
+export function createSession(config: SealedConfig, seed?: number): SealedSession {
+  return {
+    seed: seed ?? Math.floor(Math.random() * 0xffffffff),
+    config,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * セッションからカードプールを再生成する。
+ * シードと設定さえ保存しておけば384枚を保存しなくても完全に再現できる。
+ */
+export function buildPoolFor(session: SealedSession): BuildPoolResult {
+  const { setIds, packCounts, includeBasic } = session.config;
+  return buildPool({
+    indexes: setIds.map(buildSetIndex),
+    packCounts: new Map(setIds.map((id) => [id, packCounts[id] ?? 0])),
+    includeBasic,
+    basicCards: basicPoolCards(),
+    rng: mulberry32(session.seed),
+  });
+}
+
+export function totalPackCount(config: SealedConfig): number {
+  return config.setIds.reduce((sum, id) => sum + (config.packCounts[id] ?? 0), 0);
+}
+
+function readJson<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === null) return null;
+    return JSON.parse(raw) as T;
+  } catch (error) {
+    console.warn(`${key} の読み込みに失敗しました。保存データを破棄します。`, error);
+    localStorage.removeItem(key);
+    return null;
+  }
+}
+
+function writeJson(key: string, value: unknown): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    // 容量超過やプライベートモードでも操作自体は続行できるようにする
+    console.warn(`${key} の保存に失敗しました。`, error);
+  }
+}
+
+export function loadSession(): SealedSession | null {
+  const session = readJson<SealedSession>(SESSION_KEY);
+  if (session === null) return null;
+  if (typeof session.seed !== 'number' || !Array.isArray(session.config?.setIds)) {
+    localStorage.removeItem(SESSION_KEY);
+    return null;
+  }
+  return session;
+}
+
+export const saveSession = (session: SealedSession): void => writeJson(SESSION_KEY, session);
+export const loadDeck = (): SavedDeck | null => readJson<SavedDeck>(DECK_KEY);
+export const saveDeck = (deck: SavedDeck): void => writeJson(DECK_KEY, deck);
+
+export function clearSession(): void {
+  localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(DECK_KEY);
+}
