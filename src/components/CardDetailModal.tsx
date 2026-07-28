@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { LiteCard } from '../data/cardTypes';
 import { relatedCards, setName } from '../data/cardDatabase';
 import { RARITY_NAME, RARITY_CLASS, className, typeLabel } from '../ui/labels';
@@ -16,6 +16,10 @@ const FOLLOWER_TYPE = 1;
 
 /** 右クリックで開くカード詳細。スタッツと効果テキストを表示する。 */
 export function CardDetailModal({ card, owned, onClose }: Props) {
+  // 生成されるトークンをクリックしたら、そのカードの詳細に切り替える
+  const [viewing, setViewing] = useState<LiteCard>(card);
+  useEffect(() => setViewing(card), [card]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose();
@@ -24,8 +28,9 @@ export function CardDetailModal({ card, owned, onClose }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const rarity = card.rarity as Rarity;
-  const tokens = useMemo(() => relatedCards(card), [card]);
+  const tokens = useMemo(() => relatedCards(viewing), [viewing]);
+  const rarity = viewing.rarity as Rarity;
+  const isRoot = viewing.cardId === card.cardId;
 
   return (
     <div className="modal-backdrop" onClick={onClose} role="presentation">
@@ -34,47 +39,63 @@ export function CardDetailModal({ card, owned, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label={card.name}
+        aria-label={viewing.name}
       >
         <header className="modal-header">
-          <h3>{card.name}</h3>
-          <button onClick={onClose}>閉じる</button>
+          <h3>
+            {viewing.isToken && <span className="detail-effect-label">トークン</span>}
+            {viewing.name}
+          </h3>
+          <span className="modal-header-actions">
+            {!isRoot && <button onClick={() => setViewing(card)}>← {card.name}</button>}
+            <button onClick={onClose}>閉じる</button>
+          </span>
         </header>
 
         <div className="detail-body">
           <div className="detail-art">
-            <CardImage cardId={card.cardId} imageHash={card.imageHash} name={card.name} />
+            <CardImage
+              cardId={viewing.cardId}
+              imageHash={viewing.imageHash}
+              name={viewing.name}
+            />
           </div>
 
           <div className="detail-info">
             <div className="detail-stats">
-              <span className="detail-cost">{card.cost}</span>
-              {card.type === FOLLOWER_TYPE && (
+              <span className="detail-cost">{viewing.cost}</span>
+              {viewing.type === FOLLOWER_TYPE && (
                 <span className="detail-battle">
-                  {card.atk} / {card.life}
+                  {viewing.atk} / {viewing.life}
                 </span>
               )}
-              <span className={`detail-rarity ${RARITY_CLASS[rarity]}`}>
-                {RARITY_NAME[rarity]}
-              </span>
+              <span className={`detail-rarity ${RARITY_CLASS[rarity]}`}>{RARITY_NAME[rarity]}</span>
             </div>
 
             <dl className="detail-meta">
               <dt>クラス</dt>
-              <dd>{className(card.classId)}</dd>
+              <dd>{className(viewing.classId)}</dd>
               <dt>タイプ</dt>
-              <dd>{typeLabel(card.type)}</dd>
-              <dt>カードパック</dt>
-              <dd>{setName(card.setId)}</dd>
-              {card.tribeNames.length > 0 && (
+              <dd>{typeLabel(viewing.type)}</dd>
+              {!viewing.isToken && (
                 <>
-                  <dt>種族</dt>
-                  <dd>{card.tribeNames.join('・')}</dd>
+                  <dt>カードパック</dt>
+                  <dd>{setName(viewing.setId)}</dd>
                 </>
               )}
-              <dt>デッキ投入上限</dt>
-              <dd>{card.deckEnabledNum} 枚</dd>
-              {owned !== undefined && (
+              {viewing.tribeNames.length > 0 && (
+                <>
+                  <dt>種族</dt>
+                  <dd>{viewing.tribeNames.join('・')}</dd>
+                </>
+              )}
+              {!viewing.isToken && (
+                <>
+                  <dt>デッキ投入上限</dt>
+                  <dd>{viewing.deckEnabledNum} 枚</dd>
+                </>
+              )}
+              {owned !== undefined && isRoot && !viewing.isToken && (
                 <>
                   <dt>所持</dt>
                   <dd>{owned} 枚</dd>
@@ -84,22 +105,22 @@ export function CardDetailModal({ card, owned, onClose }: Props) {
 
             <section className="detail-skill">
               <h4>効果</h4>
-              <p>{card.skillText !== '' ? card.skillText : '（効果テキストなし）'}</p>
+              <p>{viewing.skillText !== '' ? viewing.skillText : '（効果テキストなし）'}</p>
             </section>
 
-            {card.evoSkillText !== undefined && card.evoSkillText !== card.skillText && (
+            {viewing.evoSkillText !== undefined && viewing.evoSkillText !== viewing.skillText && (
               <section className="detail-skill">
                 <h4>進化後</h4>
-                <p>{card.evoSkillText}</p>
+                <p>{viewing.evoSkillText}</p>
               </section>
             )}
 
-            {/* クレスト・結晶・信仰・アクセラレート */}
-            {(card.specificEffects ?? []).map((effect) => (
+            {/* クレスト・結晶・信仰・アクセラレート。クレストと信仰はコストを持たない */}
+            {(viewing.specificEffects ?? []).map((effect) => (
               <section className="detail-skill" key={`${effect.typeName}-${effect.skillText}`}>
                 <h4>
                   <span className="detail-effect-label">{effect.typeName}</span>
-                  {effect.cost !== undefined && `コスト ${effect.cost}`}
+                  {effect.cost !== undefined && effect.cost > 0 && `コスト ${effect.cost}`}
                 </h4>
                 <p>{effect.skillText}</p>
               </section>
@@ -110,21 +131,22 @@ export function CardDetailModal({ card, owned, onClose }: Props) {
                 <h4>生成されるカード</h4>
                 <ul className="token-grid">
                   {tokens.map((token) => (
-                    <li
-                      key={token.cardId}
-                      className="card-tile"
-                      title={`${token.name}（${token.cost}コスト${
-                        token.type === FOLLOWER_TYPE ? ` / ${token.atk}・${token.life}` : ''
-                      }）\n${token.skillText}`}
-                    >
-                      <CardImage
-                        cardId={token.cardId}
-                        imageHash={token.imageHash}
-                        name={token.name}
-                      />
+                    <li key={token.cardId} className="card-tile">
+                      <button
+                        className="card-hit"
+                        onClick={() => setViewing(token)}
+                        title={`${token.name} の効果を見る`}
+                      >
+                        <CardImage
+                          cardId={token.cardId}
+                          imageHash={token.imageHash}
+                          name={token.name}
+                        />
+                      </button>
                     </li>
                   ))}
                 </ul>
+                <p className="muted tiny">カードをクリックすると効果を読めます</p>
               </section>
             )}
           </div>

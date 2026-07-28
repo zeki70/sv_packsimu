@@ -1,40 +1,43 @@
 /*
  * Design Token
  *
- * 方針: ミニマル × フラット。配色はダークベース。
+ * 方針: ミニマル × フラット。
+ *
+ * 配色は「暗すぎず、白すぎず」の中間。純白だとカード画像が背景から浮いてしまい、
+ * 真っ黒だと重くなるため、少し沈めた紙色を地にしてカードを載せる。
  *
  * 意図的に使わないもの:
  *   - グラデーション / 発光 / 半透明パネル
  *   - 影（構造はヘアラインの境界線だけで作る）
  *   - 16px 以上の大きな角丸
  *
- * 色はカード画像とレアリティにだけ持たせ、UI 側は無彩色 ＋ アクセント1色に抑える。
+ * 色はカード画像にだけ持たせ、UI 側は無彩色 ＋ アクセント1色に抑える。
  * 生値をコンポーネントに直書きせず、必ずここのトークンを参照する。
- * 明暗を入れ替えたいときはこのブロックの値だけを差し替えれば済む。
+ * 明暗を変えたいときはこのブロックの値だけを差し替えれば済む。
  */
 :root {
   /* color — 役割ごとに定義する */
-  --color-bg: #0f1420;          /* 背景 */
-  --color-surface: #171d2c;     /* カード・パネル */
-  --color-surface-2: #1e2637;   /* 一段持ち上げた面（非活性チップ・入力欄の下地） */
-  --color-border: #2c3549;      /* ヘアライン。影の代わりに構造を作る */
-  --color-border-strong: #3d4a66;
-  --color-text: #e8ecf4;
-  --color-text-muted: #8b95ab;
-  --color-accent: #4a9eff;
-  --color-accent-hover: #6fb2ff;
-  --color-accent-weak: #1b2b45;
-  --color-on-accent: #06101f;
-  --color-error: #ff6b6b;
-  --color-error-bg: rgba(255, 107, 107, .12);
-  --color-warn: #ffb454;
-  --color-ok: #4ade80;
+  --color-bg: #e9e7e1;          /* 少し沈めた紙色。カードが浮かない程度のトーン */
+  --color-surface: #f6f5f2;     /* カード・パネル。背景よりわずかに明るい */
+  --color-surface-2: #dedbd3;   /* 一段沈めた面（非活性チップ・入力欄の下地） */
+  --color-border: #cdc9c0;      /* ヘアライン。影の代わりに構造を作る */
+  --color-border-strong: #aca69a;
+  --color-text: #23211d;
+  --color-text-muted: #6b675f;
+  --color-accent: #22405f;      /* 藍。彩度が低く深いのでカード画像と喧嘩しない */
+  --color-accent-hover: #172d45;
+  --color-accent-weak: #dde2e8;
+  --color-on-accent: #f6f5f2;
+  --color-error: #9c3229;
+  --color-error-bg: #f2e2e0;
+  --color-warn: #7d5210;
+  --color-ok: #2b6248;
 
   /* rarity — カード自体の属性なので色で表現する */
-  --color-bronze: #b87333;
-  --color-silver: #a8b4c4;
-  --color-gold: #e5b53a;
-  --color-legend: #d4633a;
+  --color-bronze: #8b5730;
+  --color-silver: #6d7986;
+  --color-gold: #9c7517;
+  --color-legend: #a34324;
 
   /* typography */
   --font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP",
@@ -375,29 +378,14 @@ input[type="checkbox"] { accent-color: var(--color-accent); width: 1rem; height:
 }
 
 /*
- * カード画像自体に枠が描かれているので、UI 側では枠線を出さない。
- * レアリティは下の細い帯だけで示す（色だけに頼らないよう、詳細は右クリックで読める）。
+ * カード画像自体に枠とレアリティが描かれているので、UI 側では枠線も帯も出さない。
+ * 画像をそのまま並べる。
  */
 .card-tile {
   position: relative;
   border-radius: var(--radius-sm);
   overflow: hidden;
   font-size: .75rem;
-  --rarity-color: var(--color-border);
-}
-.card-tile.r-bronze { --rarity-color: var(--color-bronze); }
-.card-tile.r-silver { --rarity-color: var(--color-silver); }
-.card-tile.r-gold   { --rarity-color: var(--color-gold); }
-.card-tile.r-legend { --rarity-color: var(--color-legend); }
-
-.card-tile::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 3px;
-  background: var(--rarity-color);
 }
 
 .card-tile--in-deck { outline: 2px solid var(--color-accent); outline-offset: -2px; }
@@ -427,10 +415,10 @@ input[type="checkbox"] { accent-color: var(--color-accent); width: 1rem; height:
   font-size: .75rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: var(--color-text);
+  color: var(--color-on-accent);
   padding: .05rem .4rem;
   border-radius: var(--radius-sm);
-  background: rgba(6, 12, 24, .85);
+  background: rgba(20, 18, 15, .85);
 }
 
 /* ---------- class select ---------- */
@@ -604,7 +592,7 @@ input[type="checkbox"] { accent-color: var(--color-accent); width: 1rem; height:
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(4, 8, 16, .72);
+  background: rgba(35, 33, 29, .55);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -631,7 +619,11 @@ input[type="checkbox"] { accent-color: var(--color-accent); width: 1rem; height:
   padding-bottom: var(--space-xs);
   border-bottom: 1px solid var(--color-border);
 }
-.modal-header h3 { margin: 0; }
+.modal-header h3 { margin: 0; display: flex; align-items: center; gap: .4rem; }
+.modal-header-actions { display: flex; gap: var(--space-xs); flex: none; }
+
+/* 生成カードは押せることが分かるように反応させる */
+.token-grid .card-hit:hover { outline: 2px solid var(--color-accent); outline-offset: -2px; }
 
 /* カード詳細 */
 .modal--detail { width: min(720px, 100%); }
