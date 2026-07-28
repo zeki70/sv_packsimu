@@ -2,11 +2,20 @@ import { useMemo, useState } from 'react';
 import type { BuildPoolResult } from '../domain/pool';
 import { Rarity, NEUTRAL_CLASS_ID } from '../domain/types';
 import { getCard, setName } from '../data/cardDatabase';
-import { CLASSES, RARITY_CLASS, RARITY_NAME, RARITY_ORDER, className } from '../ui/labels';
-import { SORT_MODE_LABELS, filterAndSortPool, type PoolSortMode } from '../ui/poolSort';
 import type { LiteCard } from '../data/cardTypes';
+import { CLASSES, RARITY_CLASS, RARITY_NAME, RARITY_ORDER, className } from '../ui/labels';
+import {
+  DEFAULT_DIRECTION,
+  SORT_MODE_LABELS,
+  TYPE_FILTER_LABELS,
+  filterAndSortPool,
+  type CardTypeKey,
+  type PoolSort,
+  type PoolSortMode,
+} from '../ui/poolSort';
 import { CardImage } from './CardImage';
 import { CardDetailModal } from './CardDetailModal';
+import { MouseGuide } from './MouseGuide';
 
 interface Props {
   readonly result: BuildPoolResult;
@@ -14,13 +23,26 @@ interface Props {
   readonly onReset: () => void;
 }
 
-const costOf = (cardId: number): number => getCard(cardId)?.cost ?? 0;
+const lookup = (cardId: number): LiteCard | undefined => getCard(cardId);
+
+const SORT_MODES: readonly PoolSortMode[] = ['cost', 'rarity'];
+const TYPE_KEYS: readonly CardTypeKey[] = ['follower', 'amulet', 'spell'];
 
 export function PoolView({ result, onBuildDeck, onReset }: Props) {
   const [rarityFilter, setRarityFilter] = useState<Rarity | null>(null);
   const [classFilter, setClassFilter] = useState<number | null>(null);
-  const [sortMode, setSortMode] = useState<PoolSortMode>('cost');
+  const [typeFilter, setTypeFilter] = useState<CardTypeKey | null>(null);
+  const [sort, setSort] = useState<PoolSort>({ mode: 'cost', direction: 'asc' });
   const [detailCard, setDetailCard] = useState<LiteCard | null>(null);
+
+  /** 同じ並び順をもう一度押したら昇順・降順を反転する */
+  const changeSort = (mode: PoolSortMode): void => {
+    setSort((prev) =>
+      prev.mode === mode
+        ? { mode, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
+        : { mode, direction: DEFAULT_DIRECTION[mode] },
+    );
+  };
 
   const stats = useMemo(() => {
     const byRarity = new Map<Rarity, number>();
@@ -34,11 +56,11 @@ export function PoolView({ result, onBuildDeck, onReset }: Props) {
     () =>
       filterAndSortPool(
         [...result.pool.values()],
-        { rarity: rarityFilter, classId: classFilter },
-        costOf,
-        sortMode,
+        { rarity: rarityFilter, classId: classFilter, type: typeFilter },
+        lookup,
+        sort,
       ),
-    [result, rarityFilter, classFilter, sortMode],
+    [result, rarityFilter, classFilter, typeFilter, sort],
   );
 
   return (
@@ -78,17 +100,32 @@ export function PoolView({ result, onBuildDeck, onReset }: Props) {
         ))}
       </div>
 
+      <MouseGuide mode="pool" />
+
       <div className="filter-row">
         <span className="filter-label">並び順</span>
-        {(['cost', 'rarity'] as const).map((mode) => (
+        {SORT_MODES.map((mode) => (
           <button
             key={mode}
-            className={sortMode === mode ? 'chip chip--on' : 'chip'}
-            onClick={() => setSortMode(mode)}
+            className={sort.mode === mode ? 'chip chip--on' : 'chip'}
+            onClick={() => changeSort(mode)}
+            title={sort.mode === mode ? 'もう一度押すと昇順・降順が入れ替わります' : undefined}
           >
             {SORT_MODE_LABELS[mode]}
+            {sort.mode === mode && (
+              <span className="sort-arrow">{sort.direction === 'asc' ? '▲' : '▼'}</span>
+            )}
           </button>
         ))}
+        <span className="muted tiny">
+          {sort.mode === 'cost'
+            ? sort.direction === 'asc'
+              ? '低コスト順'
+              : '高コスト順'
+            : sort.direction === 'desc'
+              ? 'レジェンドが先'
+              : 'ブロンズが先'}
+        </span>
       </div>
 
       <div className="filter-row">
@@ -112,6 +149,25 @@ export function PoolView({ result, onBuildDeck, onReset }: Props) {
             onClick={() => setClassFilter(classFilter === cls.id ? null : cls.id)}
           >
             {cls.name}
+          </button>
+        ))}
+      </div>
+
+      <div className="filter-row">
+        <span className="filter-label">タイプ</span>
+        <button
+          className={typeFilter === null ? 'chip chip--on' : 'chip'}
+          onClick={() => setTypeFilter(null)}
+        >
+          すべて
+        </button>
+        {TYPE_KEYS.map((key) => (
+          <button
+            key={key}
+            className={typeFilter === key ? 'chip chip--on' : 'chip'}
+            onClick={() => setTypeFilter(typeFilter === key ? null : key)}
+          >
+            {TYPE_FILTER_LABELS[key]}
           </button>
         ))}
       </div>

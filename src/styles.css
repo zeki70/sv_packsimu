@@ -198,6 +198,35 @@ input[type="number"] { width: 4.5rem; }
 
 .search { flex: 1; min-width: 12rem; }
 
+.sort-arrow { margin-left: .3rem; font-size: .65rem; }
+
+/* マウス操作ガイド */
+.mouse-guide {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .3rem .9rem;
+  margin: 0 0 .75rem;
+  padding: .4rem .7rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: .78rem;
+  color: var(--muted);
+}
+.mouse-guide-title { font-weight: 700; color: var(--text); }
+.mouse-guide-item { display: inline-flex; align-items: center; gap: .35rem; }
+.mouse-guide kbd {
+  font: inherit;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 0 .35rem;
+}
+
 /* デッキ構築中、スクロールしても検索と絞り込みが画面に残るようにする */
 .pool-filters {
   position: sticky;

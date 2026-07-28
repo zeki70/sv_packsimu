@@ -1,4 +1,5 @@
 import { Rarity } from '../domain/types';
+import { TYPE_FILTER_LABELS, typeKeyOf } from './poolSort';
 
 export interface ClassDef {
   readonly id: number;
@@ -21,17 +22,12 @@ export function className(classId: number): string {
   return CLASSES.find((c) => c.id === classId)?.name ?? `クラス${classId}`;
 }
 
-/** 1=フォロワー, 2/3=アミュレット, 4=スペル */
+/**
+ * 1=フォロワー, 2/3=アミュレット, 4=スペル
+ * 判定は poolSort の typeKeyOf に集約し、ここでは表示名に変換するだけにする。
+ */
 export function typeLabel(type: number): string {
-  if (type === 1) return 'フォロワー';
-  if (type === 2 || type === 3) return 'アミュレット';
-  return 'スペル';
-}
-
-export function typeKey(type: number): 'follower' | 'amulet' | 'spell' {
-  if (type === 1) return 'follower';
-  if (type === 2 || type === 3) return 'amulet';
-  return 'spell';
+  return TYPE_FILTER_LABELS[typeKeyOf(type)];
 }
 
 export const RARITY_ORDER: readonly Rarity[] = [

@@ -1,11 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { filterAndSortPool, type PoolFilter } from './poolSort';
+import {
+  NO_FILTER,
+  filterAndSortPool,
+  typeKeyOf,
+  type CardInfoLookup,
+  type PoolFilter,
+} from './poolSort';
 import type { PoolEntry } from '../domain/pool';
 import { Rarity, NEUTRAL_CLASS_ID } from '../domain/types';
 
 interface Spec {
   readonly cardId: number;
   readonly cost: number;
+  readonly type?: number;
   readonly rarity?: Rarity;
   readonly classId?: number;
 }
@@ -17,108 +24,139 @@ function entry({ cardId, rarity = Rarity.Bronze, classId = 1 }: Spec): PoolEntry
   };
 }
 
-const NO_FILTER: PoolFilter = { rarity: null, classId: null };
-
-function build(specs: readonly Spec[]) {
-  const costs = new Map(specs.map((s) => [s.cardId, s.cost]));
-  return {
-    entries: specs.map(entry),
-    getCost: (cardId: number) => costs.get(cardId) ?? 0,
-  };
+function build(specs: readonly Spec[]): {
+  entries: PoolEntry[];
+  lookup: CardInfoLookup;
+} {
+  const info = new Map(specs.map((s) => [s.cardId, { cost: s.cost, type: s.type ?? 1 }]));
+  return { entries: specs.map(entry), lookup: (cardId) => info.get(cardId) };
 }
 
 const ids = (entries: readonly PoolEntry[]) => entries.map((e) => e.card.cardId);
 
-describe('filterAndSortPool — コスト順', () => {
-  it('コストの昇順で並ぶ', () => {
-    const { entries, getCost } = build([
-      { cardId: 3, cost: 5 },
-      { cardId: 1, cost: 1 },
-      { cardId: 2, cost: 3 },
-    ]);
-    expect(ids(filterAndSortPool(entries, NO_FILTER, getCost, 'cost'))).toEqual([1, 2, 3]);
+describe('typeKeyOf', () => {
+  it('1=フォロワー, 2/3=アミュレット, 4=スペル', () => {
+    expect(typeKeyOf(1)).toBe('follower');
+    expect(typeKeyOf(2)).toBe('amulet');
+    expect(typeKeyOf(3)).toBe('amulet');
+    expect(typeKeyOf(4)).toBe('spell');
+  });
+});
+
+describe('コスト順', () => {
+  const { entries, lookup } = build([
+    { cardId: 3, cost: 5 },
+    { cardId: 1, cost: 1 },
+    { cardId: 2, cost: 3 },
+  ]);
+
+  it('昇順', () => {
+    const sort = { mode: 'cost', direction: 'asc' } as const;
+    expect(ids(filterAndSortPool(entries, NO_FILTER, lookup, sort))).toEqual([1, 2, 3]);
   });
 
-  it('同じコストの中ではカードID順', () => {
-    const { entries, getCost } = build([
+  it('降順', () => {
+    const sort = { mode: 'cost', direction: 'desc' } as const;
+    expect(ids(filterAndSortPool(entries, NO_FILTER, lookup, sort))).toEqual([3, 2, 1]);
+  });
+
+  it('既定はコスト昇順', () => {
+    expect(ids(filterAndSortPool(entries, NO_FILTER, lookup))).toEqual([1, 2, 3]);
+  });
+
+  it('同じコストの中では方向によらずカードID昇順', () => {
+    const same = build([
       { cardId: 30, cost: 2 },
       { cardId: 10, cost: 2 },
       { cardId: 20, cost: 2 },
     ]);
-    expect(ids(filterAndSortPool(entries, NO_FILTER, getCost, 'cost'))).toEqual([10, 20, 30]);
-  });
-
-  it('コストが優先され、レアリティは並び順に影響しない', () => {
-    const { entries, getCost } = build([
-      { cardId: 1, cost: 8, rarity: Rarity.Legend },
-      { cardId: 2, cost: 0, rarity: Rarity.Bronze },
-    ]);
-    expect(ids(filterAndSortPool(entries, NO_FILTER, getCost, 'cost'))).toEqual([2, 1]);
-  });
-
-  it('既定はコスト順', () => {
-    const { entries, getCost } = build([
-      { cardId: 1, cost: 9, rarity: Rarity.Legend },
-      { cardId: 2, cost: 1, rarity: Rarity.Bronze },
-    ]);
-    expect(ids(filterAndSortPool(entries, NO_FILTER, getCost))).toEqual([2, 1]);
+    for (const direction of ['asc', 'desc'] as const) {
+      const sort = { mode: 'cost', direction } as const;
+      expect(ids(filterAndSortPool(same.entries, NO_FILTER, same.lookup, sort))).toEqual([
+        10, 20, 30,
+      ]);
+    }
   });
 });
 
-describe('filterAndSortPool — レアリティ順', () => {
-  it('レジェンド → ゴールド → シルバー → ブロンズ の順', () => {
-    const { entries, getCost } = build([
-      { cardId: 1, cost: 1, rarity: Rarity.Bronze },
-      { cardId: 2, cost: 1, rarity: Rarity.Legend },
-      { cardId: 3, cost: 1, rarity: Rarity.Silver },
-      { cardId: 4, cost: 1, rarity: Rarity.Gold },
-    ]);
-    expect(ids(filterAndSortPool(entries, NO_FILTER, getCost, 'rarity'))).toEqual([2, 4, 3, 1]);
+describe('レアリティ順', () => {
+  const { entries, lookup } = build([
+    { cardId: 1, cost: 1, rarity: Rarity.Bronze },
+    { cardId: 2, cost: 1, rarity: Rarity.Legend },
+    { cardId: 3, cost: 1, rarity: Rarity.Silver },
+    { cardId: 4, cost: 1, rarity: Rarity.Gold },
+  ]);
+
+  it('降順はレジェンドが先頭', () => {
+    const sort = { mode: 'rarity', direction: 'desc' } as const;
+    expect(ids(filterAndSortPool(entries, NO_FILTER, lookup, sort))).toEqual([2, 4, 3, 1]);
   });
 
-  it('同じレアリティの中はコスト順、さらにID順', () => {
-    const { entries, getCost } = build([
+  it('昇順はブロンズが先頭', () => {
+    const sort = { mode: 'rarity', direction: 'asc' } as const;
+    expect(ids(filterAndSortPool(entries, NO_FILTER, lookup, sort))).toEqual([1, 3, 4, 2]);
+  });
+
+  it('同じレアリティの中は方向によらずコスト昇順', () => {
+    const same = build([
       { cardId: 20, cost: 5, rarity: Rarity.Gold },
       { cardId: 10, cost: 2, rarity: Rarity.Gold },
       { cardId: 5, cost: 2, rarity: Rarity.Gold },
     ]);
-    expect(ids(filterAndSortPool(entries, NO_FILTER, getCost, 'rarity'))).toEqual([5, 10, 20]);
+    for (const direction of ['asc', 'desc'] as const) {
+      const sort = { mode: 'rarity', direction } as const;
+      expect(ids(filterAndSortPool(same.entries, NO_FILTER, same.lookup, sort))).toEqual([
+        5, 10, 20,
+      ]);
+    }
   });
 });
 
-describe('filterAndSortPool — 絞り込み', () => {
-  const { entries, getCost } = build([
-    { cardId: 1, cost: 1, classId: 1, rarity: Rarity.Bronze },
-    { cardId: 2, cost: 2, classId: 2, rarity: Rarity.Legend },
-    { cardId: 3, cost: 3, classId: NEUTRAL_CLASS_ID, rarity: Rarity.Gold },
-    { cardId: 4, cost: 4, classId: 1, rarity: Rarity.Legend },
+describe('絞り込み', () => {
+  const { entries, lookup } = build([
+    { cardId: 1, cost: 1, classId: 1, rarity: Rarity.Bronze, type: 1 },
+    { cardId: 2, cost: 2, classId: 2, rarity: Rarity.Legend, type: 4 },
+    { cardId: 3, cost: 3, classId: NEUTRAL_CLASS_ID, rarity: Rarity.Gold, type: 2 },
+    { cardId: 4, cost: 4, classId: 1, rarity: Rarity.Legend, type: 3 },
+    { cardId: 5, cost: 5, classId: 1, rarity: Rarity.Silver, type: 4 },
   ]);
 
-  it('クラス指定でそのクラスだけになる（ニュートラルは混ざらない）', () => {
-    expect(ids(filterAndSortPool(entries, { rarity: null, classId: 1 }, getCost))).toEqual([1, 4]);
+  const withFilter = (patch: Partial<PoolFilter>) =>
+    ids(filterAndSortPool(entries, { ...NO_FILTER, ...patch }, lookup));
+
+  it('クラスで絞れる（ニュートラルは混ざらない）', () => {
+    expect(withFilter({ classId: 1 })).toEqual([1, 4, 5]);
   });
 
   it('ニュートラルだけを選べる', () => {
-    const filter = { rarity: null, classId: NEUTRAL_CLASS_ID };
-    expect(ids(filterAndSortPool(entries, filter, getCost))).toEqual([3]);
+    expect(withFilter({ classId: NEUTRAL_CLASS_ID })).toEqual([3]);
   });
 
-  it('レアリティ指定で絞れる', () => {
-    const filter = { rarity: Rarity.Legend, classId: null };
-    expect(ids(filterAndSortPool(entries, filter, getCost))).toEqual([2, 4]);
+  it('レアリティで絞れる', () => {
+    expect(withFilter({ rarity: Rarity.Legend })).toEqual([2, 4]);
   });
 
-  it('クラスとレアリティは同時に効く（AND）', () => {
-    const filter = { rarity: Rarity.Legend, classId: 1 };
-    expect(ids(filterAndSortPool(entries, filter, getCost))).toEqual([4]);
+  it('フォロワーで絞れる', () => {
+    expect(withFilter({ type: 'follower' })).toEqual([1]);
+  });
+
+  it('アミュレットは type 2 と 3 の両方を拾う', () => {
+    expect(withFilter({ type: 'amulet' })).toEqual([3, 4]);
+  });
+
+  it('スペルで絞れる', () => {
+    expect(withFilter({ type: 'spell' })).toEqual([2, 5]);
+  });
+
+  it('クラス・レアリティ・タイプは同時に効く（AND）', () => {
+    expect(withFilter({ classId: 1, rarity: Rarity.Legend, type: 'amulet' })).toEqual([4]);
   });
 
   it('該当なしなら空', () => {
-    const filter = { rarity: Rarity.Silver, classId: 7 };
-    expect(filterAndSortPool(entries, filter, getCost)).toEqual([]);
+    expect(withFilter({ rarity: Rarity.Silver, classId: 7 })).toEqual([]);
   });
 
-  it('絞り込み後もコスト順が保たれる', () => {
+  it('絞り込み後も並び順が保たれる', () => {
     const shuffled = build([
       { cardId: 9, cost: 7, classId: 1 },
       { cardId: 8, cost: 2, classId: 1 },
@@ -127,21 +165,21 @@ describe('filterAndSortPool — 絞り込み', () => {
     ]);
     const result = filterAndSortPool(
       shuffled.entries,
-      { rarity: null, classId: 1 },
-      shuffled.getCost,
+      { ...NO_FILTER, classId: 1 },
+      shuffled.lookup,
     );
     expect(ids(result)).toEqual([8, 6, 9]);
   });
 });
 
-describe('filterAndSortPool — 副作用', () => {
+describe('副作用', () => {
   it('元の配列を書き換えない', () => {
-    const { entries, getCost } = build([
+    const { entries, lookup } = build([
       { cardId: 2, cost: 9 },
       { cardId: 1, cost: 1 },
     ]);
     const before = ids(entries);
-    filterAndSortPool(entries, NO_FILTER, getCost, 'rarity');
+    filterAndSortPool(entries, NO_FILTER, lookup, { mode: 'rarity', direction: 'desc' });
     expect(ids(entries)).toEqual(before);
   });
 });

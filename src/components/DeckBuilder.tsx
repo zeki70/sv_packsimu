@@ -4,10 +4,12 @@ import { poolCardsForClass } from '../domain/pool';
 import { DECK_SIZE, maxCopiesOf, validateDeck, type Deck } from '../domain/deckRules';
 import type { Rarity } from '../domain/types';
 import { getCard } from '../data/cardDatabase';
-import { CLASSES, RARITY_CLASS, className, typeKey, typeLabel } from '../ui/labels';
+import { CLASSES, RARITY_CLASS, className } from '../ui/labels';
+import { TYPE_FILTER_LABELS, typeKeyOf, type CardTypeKey } from '../ui/poolSort';
 import { CardImage } from './CardImage';
 import { DeckPreviewModal } from './DeckPreviewModal';
 import { CardDetailModal } from './CardDetailModal';
+import { MouseGuide } from './MouseGuide';
 import type { LiteCard } from '../data/cardTypes';
 
 interface Props {
@@ -22,7 +24,7 @@ interface Props {
 }
 
 const COSTS = [0, 1, 2, 3, 4, 5, 6, 7] as const; // 7 は「7以上」
-const TYPE_FILTERS = ['follower', 'amulet', 'spell'] as const;
+const TYPE_KEYS: readonly CardTypeKey[] = ['follower', 'amulet', 'spell'];
 
 export function DeckBuilder({
   pool,
@@ -35,7 +37,7 @@ export function DeckBuilder({
 }: Props) {
   const [search, setSearch] = useState('');
   const [costFilter, setCostFilter] = useState<number | null>(null);
-  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<CardTypeKey | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [detailCard, setDetailCard] = useState<LiteCard | null>(null);
 
@@ -57,7 +59,7 @@ export function DeckBuilder({
           const matches = costFilter === 7 ? info.cost >= 7 : info.cost === costFilter;
           if (!matches) return false;
         }
-        if (typeFilter !== null && typeKey(info.type) !== typeFilter) return false;
+        if (typeFilter !== null && typeKeyOf(info.type) !== typeFilter) return false;
         if (query !== '' && !info.name.includes(query) && !info.skillText.includes(query)) {
           return false;
         }
@@ -176,6 +178,8 @@ export function DeckBuilder({
 
       <div className="builder-body">
         <div className="pool-pane">
+          <MouseGuide mode="builder" />
+
           {/* スクロールしても検索と絞り込みが画面に残るように固定する */}
           <div className="pool-filters">
             <div className="filter-row">
@@ -205,13 +209,13 @@ export function DeckBuilder({
                   {cost === 7 ? '7+' : cost}
                 </button>
               ))}
-              {TYPE_FILTERS.map((key) => (
+              {TYPE_KEYS.map((key) => (
                 <button
                   key={key}
                   className={typeFilter === key ? 'chip chip--on' : 'chip'}
                   onClick={() => setTypeFilter(typeFilter === key ? null : key)}
                 >
-                  {typeLabel(key === 'follower' ? 1 : key === 'amulet' ? 2 : 4)}
+                  {TYPE_FILTER_LABELS[key]}
                 </button>
               ))}
             </div>
