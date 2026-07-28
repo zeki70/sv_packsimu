@@ -10,6 +10,9 @@
   --error: #ff6b6b;
   --ok: #4ade80;
 
+  /* 固定ヘッダーの高さ。sticky 要素はこのぶん下げて重ならないようにする */
+  --header-h: 3.4rem;
+
   --bronze: #b87333;
   --silver: #a8b4c4;
   --gold: #e5b53a;
@@ -64,16 +67,26 @@ input[type="number"] { width: 4.5rem; }
 
 .app { max-width: 1400px; margin: 0 auto; padding: 1rem; }
 
+/*
+ * ヘッダーは固定表示。どの画面からでも「開封をやり直す」に手が届くようにする。
+ * 下の sticky 要素（.pool-filters / .deck-pane）はこの高さぶん下げる。
+ */
 .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
-  padding-bottom: .75rem;
+  padding: .6rem 0 .75rem;
+  background: var(--bg);
   border-bottom: 1px solid var(--line);
   margin-bottom: 1.25rem;
 }
+
+.app-header-right { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
 
 .seed-chip {
   font-size: .8rem;
@@ -230,7 +243,7 @@ input[type="number"] { width: 4.5rem; }
 /* デッキ構築中、スクロールしても検索と絞り込みが画面に残るようにする */
 .pool-filters {
   position: sticky;
-  top: 0;
+  top: var(--header-h);
   z-index: 5;
   background: var(--bg);
   padding: .5rem 0;
@@ -336,12 +349,12 @@ input[type="number"] { width: 4.5rem; }
 
 .deck-pane {
   position: sticky;
-  top: 1rem;
+  top: calc(var(--header-h) + .5rem);
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: .75rem;
-  max-height: calc(100vh - 2rem);
+  max-height: calc(100vh - var(--header-h) - 1.5rem);
   overflow-y: auto;
 }
 

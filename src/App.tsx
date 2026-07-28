@@ -46,7 +46,22 @@ export function App() {
     setView('pool');
   };
 
+  /**
+   * 開封のやり直し。カードプールもデッキも失われるので必ず確認を挟む。
+   * シードが変わるため、同じプールは二度と再現できない。
+   */
   const handleReset = (): void => {
+    const deckTotal = [...deck.values()].reduce((sum, n) => sum + n, 0);
+    const lines = [
+      '開封をやり直すと、いまのカードプールは失われます。',
+      deckTotal > 0 ? `組みかけのデッキ（${deckTotal}枚）も破棄されます。` : '',
+      session !== null ? `同じプールを再現したい場合は seed: ${session.seed} を控えてください。` : '',
+      '',
+      'やり直しますか？',
+    ].filter((line) => line !== '');
+
+    if (!window.confirm(lines.join('\n'))) return;
+
     clearSession();
     setSession(null);
     setClassId(null);
@@ -63,24 +78,24 @@ export function App() {
 
   return (
     <div className="app">
+      {/* どの画面からでも触れるよう、やり直しはヘッダーに置いて固定表示する */}
       <header className="app-header">
         <h1>シャドバWB シールド戦シミュレーター</h1>
-        {session !== null && (
-          <span className="seed-chip" title="このシードを控えておくと同じプールを再現できます">
-            seed: {session.seed}
-          </span>
-        )}
+        <div className="app-header-right">
+          {session !== null && (
+            <span className="seed-chip" title="このシードを控えておくと同じプールを再現できます">
+              seed: {session.seed}
+            </span>
+          )}
+          {session !== null && <button onClick={handleReset}>開封をやり直す</button>}
+        </div>
       </header>
 
       <main>
         {view === 'setup' && <SealedSetup onStart={handleStart} />}
 
         {view === 'pool' && poolResult !== null && (
-          <PoolView
-            result={poolResult}
-            onBuildDeck={() => setView('deck')}
-            onReset={handleReset}
-          />
+          <PoolView result={poolResult} onBuildDeck={() => setView('deck')} />
         )}
 
         {view === 'deck' && poolResult !== null && (

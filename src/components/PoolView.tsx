@@ -20,7 +20,6 @@ import { MouseGuide } from './MouseGuide';
 interface Props {
   readonly result: BuildPoolResult;
   readonly onBuildDeck: () => void;
-  readonly onReset: () => void;
 }
 
 const lookup = (cardId: number): LiteCard | undefined => getCard(cardId);
@@ -28,7 +27,7 @@ const lookup = (cardId: number): LiteCard | undefined => getCard(cardId);
 const SORT_MODES: readonly PoolSortMode[] = ['cost', 'rarity'];
 const TYPE_KEYS: readonly CardTypeKey[] = ['follower', 'amulet', 'spell'];
 
-export function PoolView({ result, onBuildDeck, onReset }: Props) {
+export function PoolView({ result, onBuildDeck }: Props) {
   const [rarityFilter, setRarityFilter] = useState<Rarity | null>(null);
   const [classFilter, setClassFilter] = useState<number | null>(null);
   const [typeFilter, setTypeFilter] = useState<CardTypeKey | null>(null);
@@ -68,7 +67,6 @@ export function PoolView({ result, onBuildDeck, onReset }: Props) {
       <header className="pool-header">
         <h2>カードプール</h2>
         <div className="pool-actions">
-          <button onClick={onReset}>開封をやり直す</button>
           <button className="primary" onClick={onBuildDeck}>
             デッキを組む
           </button>
