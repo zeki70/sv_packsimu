@@ -3,6 +3,7 @@ import type { Deck } from '../domain/deckRules';
 import { DECK_SIZE } from '../domain/deckRules';
 import { getCard } from '../data/cardDatabase';
 import { RARITY_CLASS, className } from '../ui/labels';
+import { compareCards } from '../ui/poolSort';
 import type { Rarity } from '../domain/types';
 import { CardImage } from './CardImage';
 
@@ -22,12 +23,13 @@ export function DeckPreviewModal({ deck, classId, onClose }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  // デッキリストと同じ並び規則にそろえる
   const rows = useMemo(
     () =>
       [...deck.entries()]
         .map(([cardId, count]) => ({ cardId, count, info: getCard(cardId) }))
         .filter((row) => row.info !== undefined && row.count > 0)
-        .sort((a, b) => a.info!.cost - b.info!.cost || a.cardId - b.cardId),
+        .sort((a, b) => compareCards(a.info!, b.info!)),
     [deck],
   );
 

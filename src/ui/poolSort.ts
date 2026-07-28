@@ -66,28 +66,58 @@ function classSortKey(classId: number): number {
   return classId === NEUTRAL_CLASS_ID ? -1 : classId;
 }
 
+/** 並び替えに使うカードの属性。LiteCard はそのまま渡せる */
+export interface SortableCard {
+  readonly cardId: number;
+  readonly classId: number;
+  readonly rarity: number;
+  readonly cost: number;
+  /** 1=フォロワー, 2/3=アミュレット, 4=スペル */
+  readonly type: number;
+}
+
+export const DEFAULT_SORT: PoolSort = { mode: 'cost', direction: 'asc' };
+
 /**
- * 主キーが同値のときの並び。
- * ニュートラル → 当該クラスの順に並べ、その中をフォロワー → スペル → アミュレット、
- * 最後にカードID昇順で確定させる。
+ * カード2枚の並び順を決める唯一の実装。
+ * カードプール・デッキ構築の一覧・デッキリスト・デッキ確認で共有する。
  */
-function compareWithinSameCost(
-  a: PoolEntry,
-  b: PoolEntry,
-  lookup: CardInfoLookup,
+export function compareCards(
+  a: SortableCard,
+  b: SortableCard,
+  sort: PoolSort = DEFAULT_SORT,
 ): number {
-  const classDiff = classSortKey(a.card.classId) - classSortKey(b.card.classId);
+  const sign = sort.direction === 'desc' ? -1 : 1;
+
+  if (sort.mode === 'rarity' && a.rarity !== b.rarity) {
+    return sign * (a.rarity - b.rarity);
+  }
+
+  const costDiff = a.cost - b.cost;
+  if (costDiff !== 0) {
+    // コスト順のときだけ方向が効く。レアリティ順では常に昇順の副キー
+    return sort.mode === 'cost' ? sign * costDiff : costDiff;
+  }
+
+  // ここから先は同コスト内の並び。方向によらず常に同じ順にする
+  const classDiff = classSortKey(a.classId) - classSortKey(b.classId);
   if (classDiff !== 0) return classDiff;
 
-  const typeOf = (entry: PoolEntry): number => {
-    const info = lookup(entry.card.cardId);
-    return info === undefined ? TYPE_SORT_ORDER.follower : TYPE_SORT_ORDER[typeKeyOf(info.type)];
-  };
-
-  const typeDiff = typeOf(a) - typeOf(b);
+  const typeDiff = TYPE_SORT_ORDER[typeKeyOf(a.type)] - TYPE_SORT_ORDER[typeKeyOf(b.type)];
   if (typeDiff !== 0) return typeDiff;
 
-  return a.card.cardId - b.card.cardId;
+  return a.cardId - b.cardId;
+}
+
+function toSortable(entry: PoolEntry, lookup: CardInfoLookup): SortableCard {
+  const info = lookup(entry.card.cardId);
+  return {
+    cardId: entry.card.cardId,
+    classId: entry.card.classId,
+    rarity: entry.card.rarity,
+    cost: info?.cost ?? 0,
+    type: info?.type ?? 1,
+  };
 }
 
 /**
@@ -105,32 +135,19 @@ function compareWithinSameCost(
 export function sortPoolEntries(
   entries: readonly PoolEntry[],
   lookup: CardInfoLookup,
-  sort: PoolSort = { mode: 'cost', direction: 'asc' },
+  sort: PoolSort = DEFAULT_SORT,
 ): readonly PoolEntry[] {
-  const sign = sort.direction === 'desc' ? -1 : 1;
-  const costOf = (cardId: number): number => lookup(cardId)?.cost ?? 0;
-
-  // コピーしてから並び替えるので、渡された配列は壊れない
-  return [...entries].sort((a, b) => {
-    if (sort.mode === 'rarity' && a.card.rarity !== b.card.rarity) {
-      return sign * (a.card.rarity - b.card.rarity);
-    }
-
-    const costDiff = costOf(a.card.cardId) - costOf(b.card.cardId);
-    if (costDiff !== 0) {
-      // コスト順のときだけ方向が効く。レアリティ順では常に昇順の副キー
-      return sort.mode === 'cost' ? sign * costDiff : costDiff;
-    }
-
-    return compareWithinSameCost(a, b, lookup);
-  });
+  // 比較のたびに lookup を引かないよう、先に並び替えキーを作っておく
+  const decorated = entries.map((entry) => ({ entry, key: toSortable(entry, lookup) }));
+  decorated.sort((a, b) => compareCards(a.key, b.key, sort));
+  return decorated.map((d) => d.entry);
 }
 
 export function filterAndSortPool(
   entries: readonly PoolEntry[],
   filter: PoolFilter,
   lookup: CardInfoLookup,
-  sort: PoolSort = { mode: 'cost', direction: 'asc' },
+  sort: PoolSort = DEFAULT_SORT,
 ): readonly PoolEntry[] {
   const filtered = entries.filter((entry) => {
     if (filter.rarity !== null && entry.card.rarity !== filter.rarity) return false;

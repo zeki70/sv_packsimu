@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { SealedSetup } from './components/SealedSetup';
 import { PoolView } from './components/PoolView';
 import { DeckBuilder } from './components/DeckBuilder';
+import { DeckPreviewModal } from './components/DeckPreviewModal';
 import type { Deck } from './domain/deckRules';
 import {
   buildPoolFor,
@@ -33,6 +34,9 @@ export function App() {
   const [classId, setClassId] = useState<number | null>(restored.classId);
   const [deck, setDeck] = useState<Deck>(restored.deck);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+
+  const deckTotal = [...deck.values()].reduce((sum, n) => sum + n, 0);
 
   // プールはシードと設定から決まるので、保存せず毎回再生成する
   const poolResult = useMemo(() => (session === null ? null : buildPoolFor(session)), [session]);
@@ -87,6 +91,15 @@ export function App() {
               seed: {session.seed}
             </span>
           )}
+          {session !== null && classId !== null && (
+            <button
+              onClick={() => setShowPreview(true)}
+              disabled={deckTotal === 0}
+              title={deckTotal === 0 ? 'デッキにカードがありません' : undefined}
+            >
+              デッキ確認 {deckTotal > 0 && <span className="muted">({deckTotal})</span>}
+            </button>
+          )}
           {session !== null && <button onClick={handleReset}>開封をやり直す</button>}
         </div>
       </header>
@@ -112,6 +125,11 @@ export function App() {
 
         {savedAt !== null && <p className="toast">デッキを保存しました（{savedAt}）</p>}
       </main>
+
+      {/* ヘッダーから開くので、デッキ構築画面以外でも確認できる */}
+      {showPreview && classId !== null && (
+        <DeckPreviewModal deck={deck} classId={classId} onClose={() => setShowPreview(false)} />
+      )}
 
       <footer className="app-footer">
         <p>

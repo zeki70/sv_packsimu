@@ -7,12 +7,12 @@ import { getCard } from '../data/cardDatabase';
 import { CLASSES, RARITY_CLASS, className } from '../ui/labels';
 import {
   TYPE_FILTER_LABELS,
+  compareCards,
   sortPoolEntries,
   typeKeyOf,
   type CardTypeKey,
 } from '../ui/poolSort';
 import { CardImage } from './CardImage';
-import { DeckPreviewModal } from './DeckPreviewModal';
 import { CardDetailModal } from './CardDetailModal';
 import { MouseGuide } from './MouseGuide';
 import type { LiteCard } from '../data/cardTypes';
@@ -43,7 +43,6 @@ export function DeckBuilder({
   const [search, setSearch] = useState('');
   const [costFilter, setCostFilter] = useState<number | null>(null);
   const [typeFilter, setTypeFilter] = useState<CardTypeKey | null>(null);
-  const [showPreview, setShowPreview] = useState(false);
   const [detailCard, setDetailCard] = useState<LiteCard | null>(null);
 
   const deckTotal = [...deck.values()].reduce((sum, n) => sum + n, 0);
@@ -113,12 +112,13 @@ export function DeckBuilder({
     onDeckChange(new Map());
   };
 
+  // デッキリストもカード一覧と同じ並び規則にそろえる
   const deckList = useMemo(
     () =>
       [...deck.entries()]
         .map(([cardId, count]) => ({ cardId, count, info: getCard(cardId) }))
         .filter((row) => row.info !== undefined)
-        .sort((a, b) => a.info!.cost - b.info!.cost || a.cardId - b.cardId),
+        .sort((a, b) => compareCards(a.info!, b.info!)),
     [deck],
   );
 
@@ -165,9 +165,6 @@ export function DeckBuilder({
         <div className="builder-actions">
           <button onClick={requestClassChange}>クラスを変える</button>
           <button onClick={onBack}>プールを見る</button>
-          <button onClick={() => setShowPreview(true)} disabled={deckTotal === 0}>
-            デッキ確認
-          </button>
           <button
             className="primary"
             disabled={validation?.valid !== true}
@@ -316,10 +313,6 @@ export function DeckBuilder({
           )}
         </aside>
       </div>
-
-      {showPreview && (
-        <DeckPreviewModal deck={deck} classId={classId} onClose={() => setShowPreview(false)} />
-      )}
 
       {detailCard !== null && (
         <CardDetailModal
