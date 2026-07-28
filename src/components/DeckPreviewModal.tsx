@@ -1,11 +1,13 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Deck } from '../domain/deckRules';
 import { DECK_SIZE } from '../domain/deckRules';
 import { getCard } from '../data/cardDatabase';
+import type { LiteCard } from '../data/cardTypes';
 import { RARITY_CLASS, className } from '../ui/labels';
 import { compareCards } from '../ui/poolSort';
 import type { Rarity } from '../domain/types';
 import { CardImage } from './CardImage';
+import { CardDetailModal } from './CardDetailModal';
 
 interface Props {
   readonly deck: Deck;
@@ -15,13 +17,16 @@ interface Props {
 
 /** デッキを画像で並べて確認するモーダル。 */
 export function DeckPreviewModal({ deck, classId, onClose }: Props) {
+  const [detailCard, setDetailCard] = useState<LiteCard | null>(null);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose();
+      // カード詳細が開いているときは、そちらだけを閉じる
+      if (e.key === 'Escape' && detailCard === null) onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [onClose, detailCard]);
 
   // デッキリストと同じ並び規則にそろえる
   const rows = useMemo(
@@ -88,20 +93,38 @@ export function DeckPreviewModal({ deck, classId, onClose }: Props) {
             <li
               key={row.cardId}
               className={`card-tile ${RARITY_CLASS[row.info!.rarity as Rarity]}`}
-              // コストとカード名は画像に入っているので、ホバー時の補足だけにする
-              title={`${row.info!.name}（${row.info!.cost}コスト）×${row.count}`}
             >
-              <CardImage
-                cardId={row.info!.cardId}
-                imageHash={row.info!.imageHash}
-                name={row.info!.name}
-              />
-              <span className="card-count">×{row.count}</span>
+              <button
+                className="card-hit"
+                onClick={() => setDetailCard(row.info!)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setDetailCard(row.info!);
+                }}
+                // コストとカード名は画像に入っているので、ホバー時の補足だけにする
+                title={`${row.info!.name}（${row.info!.cost}コスト）×${row.count}\nクリックで効果を読む`}
+              >
+                <CardImage
+                  cardId={row.info!.cardId}
+                  imageHash={row.info!.imageHash}
+                  name={row.info!.name}
+                />
+                <span className="card-count">×{row.count}</span>
+              </button>
             </li>
           ))}
           {rows.length === 0 && <li className="muted">デッキが空です</li>}
         </ul>
+
+        <p className="muted tiny">カードをクリックすると効果を読めます</p>
       </div>
+
+      {/* クリックが親の背景まで伝わると、デッキ確認まで一緒に閉じてしまう */}
+      {detailCard !== null && (
+        <span onClick={(e) => e.stopPropagation()} role="presentation">
+          <CardDetailModal card={detailCard} onClose={() => setDetailCard(null)} />
+        </span>
+      )}
     </div>
   );
 }

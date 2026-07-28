@@ -1,4 +1,5 @@
 import { buildPool, type BuildPoolResult } from '../domain/pool';
+import type { OpenedCard } from '../domain/types';
 import { deriveSeed, mulberry32 } from '../domain/rng';
 import {
   basicPoolCards,
@@ -103,6 +104,36 @@ export function withExtraPacks(
   }
 
   return { ...config, setIds: setIds.sort((a, b) => a - b), packCounts };
+}
+
+/**
+ * 追加開封で新しく出たカードを求める。
+ *
+ * 弾ごとに乱数列が独立していて先頭は変わらないので、
+ * 弾ごとに「前回より後ろにある分」がそのまま追加分になる。
+ */
+export function addedOpenedCards(
+  before: readonly OpenedCard[],
+  after: readonly OpenedCard[],
+): readonly OpenedCard[] {
+  const seenBefore = new Map<number, number>();
+  for (const card of before) {
+    seenBefore.set(card.setId, (seenBefore.get(card.setId) ?? 0) + 1);
+  }
+
+  const remaining = new Map(seenBefore);
+  const added: OpenedCard[] = [];
+
+  for (const card of after) {
+    const skip = remaining.get(card.setId) ?? 0;
+    if (skip > 0) {
+      remaining.set(card.setId, skip - 1);
+      continue;
+    }
+    added.push(card);
+  }
+
+  return added;
 }
 
 export function totalPackCount(config: SealedConfig): number {

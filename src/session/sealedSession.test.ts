@@ -6,6 +6,7 @@ import {
   buildPoolFor,
   createSession,
   defaultConfig,
+  addedOpenedCards,
   totalPackCount,
   withExtraPacks,
 } from './sealedSession';
@@ -155,6 +156,49 @@ describe('シールド戦の通し検証（実カードデータ）', () => {
     for (const setId of huge.setIds) {
       expect(huge.packCounts[setId]).toBeLessThanOrEqual(MAX_PACKS_PER_SET);
     }
+  });
+
+  it('追加開封で増えたぶんだけを取り出せる', () => {
+    const base = defaultConfig();
+    const before = buildPoolFor(createSession(base, 20260728));
+
+    const target = base.setIds[2]!;
+    const after = buildPoolFor(
+      createSession(withExtraPacks(base, new Map([[target, 4]])), 20260728),
+    );
+
+    const added = addedOpenedCards(before.openedCards, after.openedCards);
+
+    // 追加したパック数ぶんだけ
+    expect(added).toHaveLength(4 * CARDS_PER_PACK);
+    // 追加した弾のカードだけ
+    expect(added.every((c) => c.setId === target)).toBe(true);
+    // 追加分は after の末尾（その弾の続き）と一致する
+    const targetAfter = after.openedCards.filter((c) => c.setId === target);
+    expect(added).toEqual(targetAfter.slice(-4 * CARDS_PER_PACK));
+  });
+
+  it('複数の弾を同時に追加しても、それぞれの増分を取り出せる', () => {
+    const base = defaultConfig();
+    const before = buildPoolFor(createSession(base, 555));
+    const extra = new Map([
+      [base.setIds[0]!, 2],
+      [base.setIds[3]!, 3],
+    ]);
+    const after = buildPoolFor(createSession(withExtraPacks(base, extra), 555));
+
+    const added = addedOpenedCards(before.openedCards, after.openedCards);
+    expect(added).toHaveLength(5 * CARDS_PER_PACK);
+
+    for (const [setId, packs] of extra) {
+      expect(added.filter((c) => c.setId === setId)).toHaveLength(packs * CARDS_PER_PACK);
+    }
+  });
+
+  it('何も追加していなければ増分は空', () => {
+    const base = defaultConfig();
+    const pool = buildPoolFor(createSession(base, 99));
+    expect(addedOpenedCards(pool.openedCards, pool.openedCards)).toEqual([]);
   });
 
   it('パック数を減らすと40枚組めなくなるクラスが出る', () => {

@@ -13,6 +13,8 @@ import {
   type PoolSort,
   type PoolSortMode,
 } from '../ui/poolSort';
+import type { OpenedCard } from '../domain/types';
+import { compareCards } from '../ui/poolSort';
 import { CardImage } from './CardImage';
 import { CardDetailModal } from './CardDetailModal';
 import { MouseGuide } from './MouseGuide';
@@ -23,6 +25,9 @@ interface Props {
   /** レギュレーション由来の案内（The k4sen の「好きな弾を追加」など） */
   readonly notice?: string;
   readonly onAddPacks?: () => void;
+  /** 直前の追加開封で出たカード */
+  readonly addedCards?: readonly OpenedCard[];
+  readonly onDismissAdded?: () => void;
 }
 
 const lookup = (cardId: number): LiteCard | undefined => getCard(cardId);
@@ -30,7 +35,14 @@ const lookup = (cardId: number): LiteCard | undefined => getCard(cardId);
 const SORT_MODES: readonly PoolSortMode[] = ['cost', 'rarity'];
 const TYPE_KEYS: readonly CardTypeKey[] = ['follower', 'amulet', 'spell'];
 
-export function PoolView({ result, onBuildDeck, notice, onAddPacks }: Props) {
+export function PoolView({
+  result,
+  onBuildDeck,
+  notice,
+  onAddPacks,
+  addedCards = [],
+  onDismissAdded,
+}: Props) {
   const [rarityFilter, setRarityFilter] = useState<Rarity | null>(null);
   const [classFilter, setClassFilter] = useState<number | null>(null);
   const [typeFilter, setTypeFilter] = useState<CardTypeKey | null>(null);
@@ -45,6 +57,20 @@ export function PoolView({ result, onBuildDeck, notice, onAddPacks }: Props) {
         : { mode, direction: DEFAULT_DIRECTION[mode] },
     );
   };
+
+  /** 追加分は同名をまとめて枚数で見せる。並びは一覧と同じ規則 */
+  const added = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (const opened of addedCards) {
+      counts.set(opened.cardId, (counts.get(opened.cardId) ?? 0) + 1);
+    }
+    return [...counts]
+      .map(([cardId, count]) => ({ card: getCard(cardId), count }))
+      .filter((row): row is { card: LiteCard; count: number } => row.card !== undefined)
+      .sort((a, b) => compareCards(a.card, b.card));
+  }, [addedCards]);
+
+  const addedTotal = addedCards.length;
 
   const stats = useMemo(() => {
     const byRarity = new Map<Rarity, number>();
@@ -111,6 +137,33 @@ export function PoolView({ result, onBuildDeck, notice, onAddPacks }: Props) {
           </span>
         ))}
       </div>
+
+      {added.length > 0 && (
+        <section className="added">
+          <header className="added-header">
+            <h3>
+              追加で出たカード <span className="muted">{addedTotal}枚 / {added.length}種</span>
+            </h3>
+            {onDismissAdded !== undefined && <button onClick={onDismissAdded}>閉じる</button>}
+          </header>
+          <ul className="card-grid">
+            {added.map(({ card, count }) => (
+              <li
+                key={card.cardId}
+                className="card-tile card-tile--added"
+                title={`${card.name}（${card.cost}コスト / ${className(card.classId)}）×${count}\n右クリックで詳細`}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setDetailCard(card);
+                }}
+              >
+                <CardImage cardId={card.cardId} imageHash={card.imageHash} name={card.name} />
+                <span className="card-count">×{count}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <MouseGuide mode="pool" />
 

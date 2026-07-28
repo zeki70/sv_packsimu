@@ -6,6 +6,7 @@ import { DeckPreviewModal } from './components/DeckPreviewModal';
 import { AddPacksModal } from './components/AddPacksModal';
 import { needsFreeChoice } from './session/presets';
 import type { Deck } from './domain/deckRules';
+import type { OpenedCard } from './domain/types';
 import {
   buildPoolFor,
   clearSession,
@@ -14,6 +15,7 @@ import {
   loadSession,
   saveDeck,
   saveSession,
+  addedOpenedCards,
   totalPackCount,
   withExtraPacks,
   type SealedConfig,
@@ -39,6 +41,8 @@ export function App() {
   const [deck, setDeck] = useState<Deck>(restored.deck);
   const [showPreview, setShowPreview] = useState(false);
   const [showAddPacks, setShowAddPacks] = useState(false);
+  /** 直前の追加開封で出たカード。次の開封や設定変更まで表示し続ける */
+  const [addedCards, setAddedCards] = useState<readonly OpenedCard[]>([]);
 
   const deckTotal = [...deck.values()].reduce((sum, n) => sum + n, 0);
 
@@ -105,13 +109,18 @@ export function App() {
    * シードは変えない（変えると先頭の開封結果まで変わってしまう）。
    */
   const handleAddPacks = (extra: ReadonlyMap<number, number>): void => {
-    if (session === null) return;
+    if (session === null || poolResult === null) return;
+
     const next: SealedSession = {
       ...session,
       config: withExtraPacks(session.config, extra),
     };
+    // 何が増えたのかを画面で示すため、追加前後の開封結果を突き合わせる
+    const added = addedOpenedCards(poolResult.openedCards, buildPoolFor(next).openedCards);
+
     saveSession(next);
     setSession(next);
+    setAddedCards(added);
     setShowAddPacks(false);
     setView('pool');
   };
@@ -150,6 +159,8 @@ export function App() {
           <PoolView
             result={poolResult}
             onBuildDeck={() => setView('deck')}
+            addedCards={addedCards}
+            onDismissAdded={() => setAddedCards([])}
             {...(needsFreeChoice(session.presetId, totalPackCount(session.config))
               ? {
                   notice:
