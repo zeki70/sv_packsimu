@@ -58,4 +58,14 @@ describe('The k4sen', () => {
   it('やることが残っている旨を持っている', () => {
     expect(preset('k4sen').todo).not.toBeNull();
   });
+
+  it('公認と誤解されないよう、非公式である旨の注記を持つ', () => {
+    const attribution = preset('k4sen').attribution;
+    expect(attribution).not.toBeNull();
+    expect(attribution).toContain('関係ありません');
+  });
+
+  it('名前に「形式」を付けて、イベントそのものと区別する', () => {
+    expect(preset('k4sen').name).toContain('形式');
+  });
 });

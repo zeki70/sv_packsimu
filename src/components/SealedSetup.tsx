@@ -85,6 +85,12 @@ export function SealedSetup({ onStart }: Props) {
               <span className="warn">{activePreset.todo}</span>
             </>
           )}
+          {activePreset.attribution !== null && (
+            <>
+              <br />
+              {activePreset.attribution}
+            </>
+          )}
         </p>
       )}
 

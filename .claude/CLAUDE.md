@@ -90,7 +90,8 @@ SVCardEntry = { common: SVCardData, evo?: SVEvoData, specific_effects?: Specific
   - **The k4sen: 伝説の幕開け20 + 最新弾20 + 好きな弾5 / ベーシック使用可**
     「好きな弾」は**開封結果を見てから**選ぶ形式。プリセットは固定の40パックぶんだけ埋め、
     残りは開封後に「追加で開ける」から足してもらう（`needsFreeChoice` でプール画面に案内を出す）
-    表記は **The k4sen**（k は小文字）
+    表記は **The k4sen 形式**（k は小文字。公認と誤解されないよう「形式」を必ず付ける）
+    `attribution` に非公式である旨を持たせ、設定画面とフッターの両方に出す
   - 弾IDはハードコードせず、`findSetIdByName` と `latestPackSetIds` で解決する
 - **追加開封**（`withExtraPacks`）: パック数を増やすだけ。シードは変えない
   - 弾ごとに独立した乱数列（`rngFor`）を使っているので、パック数を増やしても

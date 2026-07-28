@@ -164,7 +164,7 @@ export function App() {
             {...(needsFreeChoice(session.presetId, totalPackCount(session.config))
               ? {
                   notice:
-                    'The k4sen: この開封結果を見て、好きな弾を5パック追加してください。',
+                    'The k4sen 形式: この開封結果を見て、好きな弾を5パック追加してください。',
                   onAddPacks: () => setShowAddPacks(true),
                 }
               : {})}
@@ -201,6 +201,10 @@ export function App() {
         <p>
           非公式のファンツールです。Cygames および Shadowverse: Worlds Beyond 運営とは関係ありません。
           カード情報・画像の権利は Cygames, Inc. に帰属します。
+        </p>
+        <p>
+          レギュレーションの「The k4sen 形式」は、当ツールが独自に再現したものです。
+          イベントおよびその運営・出演者とは一切関係ありません。
         </p>
       </footer>
     </div>

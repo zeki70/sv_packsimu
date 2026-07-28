@@ -7,6 +7,8 @@ export interface SealedPreset {
   readonly summary: string;
   /** 適用しただけでは決まらない部分の案内。null なら追加操作は不要 */
   readonly todo: string | null;
+  /** 公認だと誤解されないための注記。null なら不要 */
+  readonly attribution: string | null;
   readonly build: () => SealedConfig;
 }
 
@@ -68,16 +70,19 @@ export const PRESETS: readonly SealedPreset[] = [
     name: '標準',
     summary: `最新6弾を各${DEFAULT_PACKS_PER_SET}パック / ベーシックなし`,
     todo: null,
+    attribution: null,
     build: defaultConfig,
   },
   {
     id: K4SEN_ID,
-    name: 'The k4sen',
+    name: 'The k4sen 形式',
     summary: `伝説の幕開け20 + 最新弾20 + 好きな弾${K4SEN_FREE_CHOICE_PACKS} / ベーシックあり`,
     todo:
       `まず ${K4SEN_FIXED_PACKS} パックを開封し、その結果を見てから` +
       `好きな弾を ${K4SEN_FREE_CHOICE_PACKS} パック追加します。` +
       '追加はヘッダーの「追加で開ける」から行えます。',
+    attribution:
+      'The k4sen のレギュレーションを当ツールが再現したものです。イベント運営とは関係ありません。',
     build: buildK4sen,
   },
 ];
