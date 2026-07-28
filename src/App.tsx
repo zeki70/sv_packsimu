@@ -55,6 +55,8 @@ export function App() {
     setSession(next);
     setClassId(null);
     setDeck(new Map());
+    // 前のセッションの追加分が新しい開封結果に残らないようにする
+    setAddedCards([]);
     setView('pool');
   };
 
@@ -78,6 +80,7 @@ export function App() {
     setSession(null);
     setClassId(null);
     setDeck(new Map());
+    setAddedCards([]);
     setView('setup');
   };
 

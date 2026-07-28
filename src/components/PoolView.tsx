@@ -58,19 +58,34 @@ export function PoolView({
     );
   };
 
-  /** 追加分は同名をまとめて枚数で見せる。並びは一覧と同じ規則 */
+  /**
+   * 追加分は同名をまとめて枚数で見せる。並びは一覧と同じ規則。
+   *
+   * 追加開封では重複が大量に出るため、そのまま並べると既存カードと見分けがつかない。
+   * 「今回はじめて手に入った種類」かどうかを出して区別できるようにする。
+   * 追加前の所持数は「現在の所持数 − 今回の枚数」で復元できる。
+   */
   const added = useMemo(() => {
     const counts = new Map<number, number>();
     for (const opened of addedCards) {
       counts.set(opened.cardId, (counts.get(opened.cardId) ?? 0) + 1);
     }
     return [...counts]
-      .map(([cardId, count]) => ({ card: getCard(cardId), count }))
-      .filter((row): row is { card: LiteCard; count: number } => row.card !== undefined)
+      .map(([cardId, count]) => {
+        const owned = result.pool.get(cardId)?.count ?? count;
+        return { card: getCard(cardId), count, isNewKind: owned - count <= 0 };
+      })
+      .filter(
+        (row): row is { card: LiteCard; count: number; isNewKind: boolean } =>
+          row.card !== undefined,
+      )
       .sort((a, b) => compareCards(a.card, b.card));
-  }, [addedCards]);
+  }, [addedCards, result]);
 
   const addedTotal = addedCards.length;
+  const addedNewKinds = added.filter((row) => row.isNewKind).length;
+  const [showOnlyNew, setShowOnlyNew] = useState(false);
+  const addedVisible = showOnlyNew ? added.filter((row) => row.isNewKind) : added;
 
   const stats = useMemo(() => {
     const byRarity = new Map<Rarity, number>();
@@ -142,16 +157,37 @@ export function PoolView({
         <section className="added">
           <header className="added-header">
             <h3>
-              追加で出たカード <span className="muted">{addedTotal}枚 / {added.length}種</span>
+              追加で出たカード{' '}
+              <span className="muted">
+                {addedTotal}枚 / {added.length}種
+              </span>
             </h3>
             {onDismissAdded !== undefined && <button onClick={onDismissAdded}>閉じる</button>}
           </header>
+
+          <p className="muted tiny">
+            うち <strong className="added-new-count">{addedNewKinds}種</strong> が今回はじめて出たカードです。
+            残り {added.length - addedNewKinds}種 は既に持っていたカードの重複です。
+          </p>
+
+          <div className="filter-row">
+            <button
+              className={showOnlyNew ? 'chip chip--on' : 'chip'}
+              onClick={() => setShowOnlyNew(!showOnlyNew)}
+              disabled={addedNewKinds === 0}
+            >
+              はじめて出たカードだけ表示
+            </button>
+          </div>
+
           <ul className="card-grid">
-            {added.map(({ card, count }) => (
+            {addedVisible.map(({ card, count, isNewKind }) => (
               <li
                 key={card.cardId}
-                className="card-tile card-tile--added"
-                title={`${card.name}（${card.cost}コスト / ${className(card.classId)}）×${count}\n右クリックで詳細`}
+                className={isNewKind ? 'card-tile card-tile--new' : 'card-tile card-tile--dup'}
+                title={`${card.name}（${card.cost}コスト / ${className(card.classId)}）×${count}\n${
+                  isNewKind ? '今回はじめて出たカード' : '既に持っていたカードの重複'
+                }\n右クリックで詳細`}
                 onContextMenu={(e) => {
                   e.preventDefault();
                   setDetailCard(card);
@@ -159,8 +195,12 @@ export function PoolView({
               >
                 <CardImage cardId={card.cardId} imageHash={card.imageHash} name={card.name} />
                 <span className="card-count">×{count}</span>
+                {isNewKind && <span className="new-badge">NEW</span>}
               </li>
             ))}
+            {addedVisible.length === 0 && (
+              <li className="muted tiny">はじめて出たカードはありませんでした。</li>
+            )}
           </ul>
         </section>
       )}

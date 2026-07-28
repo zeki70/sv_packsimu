@@ -800,4 +800,22 @@ input[type="checkbox"] { accent-color: var(--color-accent); width: 1rem; height:
   margin-bottom: var(--space-xs);
 }
 .added-header h3 { margin: 0; }
-.card-tile--added { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+/* 追加開封の結果は「はじめて出た種類」と「重複」を見分けられるようにする */
+.card-tile--new { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.card-tile--dup { opacity: .55; }
+.card-tile--dup:hover { opacity: 1; }
+
+.new-badge {
+  position: absolute;
+  top: .25rem;
+  left: .25rem;
+  font-size: .625rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+  border-radius: var(--radius-sm);
+  padding: .05rem .3rem;
+}
+
+.added-new-count { color: var(--color-accent); }
