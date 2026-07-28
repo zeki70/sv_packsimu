@@ -5,7 +5,12 @@ import { DECK_SIZE, maxCopiesOf, validateDeck, type Deck } from '../domain/deckR
 import type { Rarity } from '../domain/types';
 import { getCard } from '../data/cardDatabase';
 import { CLASSES, RARITY_CLASS, className } from '../ui/labels';
-import { TYPE_FILTER_LABELS, typeKeyOf, type CardTypeKey } from '../ui/poolSort';
+import {
+  TYPE_FILTER_LABELS,
+  sortPoolEntries,
+  typeKeyOf,
+  type CardTypeKey,
+} from '../ui/poolSort';
 import { CardImage } from './CardImage';
 import { DeckPreviewModal } from './DeckPreviewModal';
 import { CardDetailModal } from './CardDetailModal';
@@ -50,26 +55,23 @@ export function DeckBuilder({
 
   const visible = useMemo(() => {
     const query = search.trim();
-    return [...available]
-      .filter((entry) => {
-        const info = getCard(entry.card.cardId);
-        if (info === undefined) return false;
+    const filtered = available.filter((entry) => {
+      const info = getCard(entry.card.cardId);
+      if (info === undefined) return false;
 
-        if (costFilter !== null) {
-          const matches = costFilter === 7 ? info.cost >= 7 : info.cost === costFilter;
-          if (!matches) return false;
-        }
-        if (typeFilter !== null && typeKeyOf(info.type) !== typeFilter) return false;
-        if (query !== '' && !info.name.includes(query) && !info.skillText.includes(query)) {
-          return false;
-        }
-        return true;
-      })
-      .sort((a, b) => {
-        const ai = getCard(a.card.cardId)!;
-        const bi = getCard(b.card.cardId)!;
-        return ai.cost - bi.cost || a.card.cardId - b.card.cardId;
-      });
+      if (costFilter !== null) {
+        const matches = costFilter === 7 ? info.cost >= 7 : info.cost === costFilter;
+        if (!matches) return false;
+      }
+      if (typeFilter !== null && typeKeyOf(info.type) !== typeFilter) return false;
+      if (query !== '' && !info.name.includes(query) && !info.skillText.includes(query)) {
+        return false;
+      }
+      return true;
+    });
+
+    // カードプール画面と同じ並び（コスト → ニュートラル先 → フォロワー/スペル/アミュレット → ID）
+    return sortPoolEntries(filtered, getCard);
   }, [available, search, costFilter, typeFilter]);
 
   const validation = useMemo(

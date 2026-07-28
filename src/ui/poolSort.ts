@@ -1,5 +1,5 @@
 import type { PoolEntry } from '../domain/pool';
-import type { Rarity } from '../domain/types';
+import { NEUTRAL_CLASS_ID, type Rarity } from '../domain/types';
 
 export type PoolSortMode = 'cost' | 'rarity';
 export type SortDirection = 'asc' | 'desc';
@@ -51,15 +51,81 @@ export function typeKeyOf(type: number): CardTypeKey {
   return 'spell';
 }
 
+/** 同コスト内でのタイプの並び順: フォロワー → スペル → アミュレット */
+const TYPE_SORT_ORDER: Readonly<Record<CardTypeKey, number>> = {
+  follower: 0,
+  spell: 1,
+  amulet: 2,
+};
+
+/**
+ * 同コスト内でのクラスの並び順。
+ * ニュートラルを先頭に置き、そのあとをクラスID昇順にする。
+ */
+function classSortKey(classId: number): number {
+  return classId === NEUTRAL_CLASS_ID ? -1 : classId;
+}
+
+/**
+ * 主キーが同値のときの並び。
+ * ニュートラル → 当該クラスの順に並べ、その中をフォロワー → スペル → アミュレット、
+ * 最後にカードID昇順で確定させる。
+ */
+function compareWithinSameCost(
+  a: PoolEntry,
+  b: PoolEntry,
+  lookup: CardInfoLookup,
+): number {
+  const classDiff = classSortKey(a.card.classId) - classSortKey(b.card.classId);
+  if (classDiff !== 0) return classDiff;
+
+  const typeOf = (entry: PoolEntry): number => {
+    const info = lookup(entry.card.cardId);
+    return info === undefined ? TYPE_SORT_ORDER.follower : TYPE_SORT_ORDER[typeKeyOf(info.type)];
+  };
+
+  const typeDiff = typeOf(a) - typeOf(b);
+  if (typeDiff !== 0) return typeDiff;
+
+  return a.card.cardId - b.card.cardId;
+}
+
 /**
  * カードプールを絞り込んで並び替える。
  *
- * - `cost`: コスト → カードID
- * - `rarity`: レアリティ → コスト → カードID
+ * - `cost`: コスト → クラス → タイプ → カードID
+ * - `rarity`: レアリティ → コスト → クラス → タイプ → カードID
+ *
+ * 同コスト内はニュートラルを先に置き、その中をフォロワー → スペル → アミュレット、
+ * 最後にカードID昇順で並べる。
  *
  * `direction` は先頭のキーにだけ効く。同値のときの並びを安定させるため、
- * 2番目以降のキー（コスト・カードID）は常に昇順にする。
+ * 2番目以降のキーは常に昇順にする。
  */
+export function sortPoolEntries(
+  entries: readonly PoolEntry[],
+  lookup: CardInfoLookup,
+  sort: PoolSort = { mode: 'cost', direction: 'asc' },
+): readonly PoolEntry[] {
+  const sign = sort.direction === 'desc' ? -1 : 1;
+  const costOf = (cardId: number): number => lookup(cardId)?.cost ?? 0;
+
+  // コピーしてから並び替えるので、渡された配列は壊れない
+  return [...entries].sort((a, b) => {
+    if (sort.mode === 'rarity' && a.card.rarity !== b.card.rarity) {
+      return sign * (a.card.rarity - b.card.rarity);
+    }
+
+    const costDiff = costOf(a.card.cardId) - costOf(b.card.cardId);
+    if (costDiff !== 0) {
+      // コスト順のときだけ方向が効く。レアリティ順では常に昇順の副キー
+      return sort.mode === 'cost' ? sign * costDiff : costDiff;
+    }
+
+    return compareWithinSameCost(a, b, lookup);
+  });
+}
+
 export function filterAndSortPool(
   entries: readonly PoolEntry[],
   filter: PoolFilter,
@@ -76,21 +142,5 @@ export function filterAndSortPool(
     return true;
   });
 
-  const sign = sort.direction === 'desc' ? -1 : 1;
-  const costOf = (cardId: number): number => lookup(cardId)?.cost ?? 0;
-
-  // filter が返した新しい配列の上で並び替えるので、元の配列は壊れない
-  return filtered.sort((a, b) => {
-    if (sort.mode === 'rarity' && a.card.rarity !== b.card.rarity) {
-      return sign * (a.card.rarity - b.card.rarity);
-    }
-
-    const costDiff = costOf(a.card.cardId) - costOf(b.card.cardId);
-    if (costDiff !== 0) {
-      // コスト順のときだけ方向が効く。レアリティ順では常に昇順の副キー
-      return sort.mode === 'cost' ? sign * costDiff : costDiff;
-    }
-
-    return a.card.cardId - b.card.cardId;
-  });
+  return sortPoolEntries(filtered, lookup, sort);
 }

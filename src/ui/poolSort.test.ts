@@ -64,7 +64,7 @@ describe('コスト順', () => {
     expect(ids(filterAndSortPool(entries, NO_FILTER, lookup))).toEqual([1, 2, 3]);
   });
 
-  it('同じコストの中では方向によらずカードID昇順', () => {
+  it('同じコスト・同じクラス・同じタイプなら方向によらずカードID昇順', () => {
     const same = build([
       { cardId: 30, cost: 2 },
       { cardId: 10, cost: 2 },
@@ -76,6 +76,83 @@ describe('コスト順', () => {
         10, 20, 30,
       ]);
     }
+  });
+});
+
+describe('同コスト内の並び', () => {
+  const FOLLOWER = 1;
+  const AMULET = 2;
+  const COUNTDOWN_AMULET = 3;
+  const SPELL = 4;
+
+  it('ニュートラルが先、そのあとにクラスのカードが並ぶ', () => {
+    const { entries, lookup } = build([
+      { cardId: 1, cost: 3, classId: 5, type: FOLLOWER },
+      { cardId: 2, cost: 3, classId: NEUTRAL_CLASS_ID, type: FOLLOWER },
+      { cardId: 3, cost: 3, classId: 5, type: FOLLOWER },
+      { cardId: 4, cost: 3, classId: NEUTRAL_CLASS_ID, type: FOLLOWER },
+    ]);
+    expect(ids(filterAndSortPool(entries, NO_FILTER, lookup))).toEqual([2, 4, 1, 3]);
+  });
+
+  it('各グループ内はフォロワー → スペル → アミュレットの順', () => {
+    const { entries, lookup } = build([
+      { cardId: 1, cost: 3, classId: 1, type: AMULET },
+      { cardId: 2, cost: 3, classId: 1, type: SPELL },
+      { cardId: 3, cost: 3, classId: 1, type: FOLLOWER },
+    ]);
+    expect(ids(filterAndSortPool(entries, NO_FILTER, lookup))).toEqual([3, 2, 1]);
+  });
+
+  it('カウントダウンアミュレット(type 3)もアミュレットとして最後に並ぶ', () => {
+    const { entries, lookup } = build([
+      { cardId: 1, cost: 3, classId: 1, type: COUNTDOWN_AMULET },
+      { cardId: 2, cost: 3, classId: 1, type: SPELL },
+      { cardId: 3, cost: 3, classId: 1, type: FOLLOWER },
+    ]);
+    expect(ids(filterAndSortPool(entries, NO_FILTER, lookup))).toEqual([3, 2, 1]);
+  });
+
+  it('ニュートラル → クラス → タイプ → ID の優先順位で並ぶ', () => {
+    const { entries, lookup } = build([
+      { cardId: 40, cost: 2, classId: 3, type: FOLLOWER },
+      { cardId: 30, cost: 2, classId: 3, type: FOLLOWER },
+      { cardId: 20, cost: 2, classId: 3, type: SPELL },
+      { cardId: 12, cost: 2, classId: NEUTRAL_CLASS_ID, type: AMULET },
+      { cardId: 11, cost: 2, classId: NEUTRAL_CLASS_ID, type: SPELL },
+      { cardId: 10, cost: 2, classId: NEUTRAL_CLASS_ID, type: FOLLOWER },
+    ]);
+    // N: フォロワー10 → スペル11 → アミュレット12
+    // クラス3: フォロワー30,40 → スペル20
+    expect(ids(filterAndSortPool(entries, NO_FILTER, lookup))).toEqual([10, 11, 12, 30, 40, 20]);
+  });
+
+  it('コストが違えばコストが優先される', () => {
+    const { entries, lookup } = build([
+      { cardId: 1, cost: 5, classId: NEUTRAL_CLASS_ID, type: FOLLOWER },
+      { cardId: 2, cost: 1, classId: 7, type: AMULET },
+    ]);
+    expect(ids(filterAndSortPool(entries, NO_FILTER, lookup))).toEqual([2, 1]);
+  });
+
+  it('複数クラスがある場合はクラスID昇順で並ぶ', () => {
+    const { entries, lookup } = build([
+      { cardId: 3, cost: 1, classId: 7, type: FOLLOWER },
+      { cardId: 1, cost: 1, classId: 2, type: FOLLOWER },
+      { cardId: 2, cost: 1, classId: 4, type: FOLLOWER },
+      { cardId: 0, cost: 1, classId: NEUTRAL_CLASS_ID, type: FOLLOWER },
+    ]);
+    expect(ids(filterAndSortPool(entries, NO_FILTER, lookup))).toEqual([0, 1, 2, 3]);
+  });
+
+  it('レアリティ順のときも同コスト内は同じ規則で並ぶ', () => {
+    const { entries, lookup } = build([
+      { cardId: 1, cost: 3, classId: 1, type: AMULET, rarity: Rarity.Gold },
+      { cardId: 2, cost: 3, classId: NEUTRAL_CLASS_ID, type: SPELL, rarity: Rarity.Gold },
+      { cardId: 3, cost: 3, classId: 1, type: FOLLOWER, rarity: Rarity.Gold },
+    ]);
+    const sort = { mode: 'rarity', direction: 'desc' } as const;
+    expect(ids(filterAndSortPool(entries, NO_FILTER, lookup, sort))).toEqual([2, 3, 1]);
   });
 });
 
