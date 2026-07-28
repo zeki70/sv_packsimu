@@ -21,8 +21,16 @@ interface Props {
  * 原寸は1枚あたり平均562KB あるため、一覧表示で多用しないこと。
  */
 export function CardImage({ cardId, imageHash, name, variant = 'full', className }: Props) {
+  /*
+   * src を state に持つと、同じ要素のまま cardId だけ差し替わったとき
+   * （カード詳細でトークンに切り替えたときなど）に前のカードの画像が残る。
+   * 「どの cardId でローカル画像が無かったか」を持てば、cardId が変われば自然に戻る。
+   */
+  const [missingLocalFor, setMissingLocalFor] = useState<number | null>(null);
+
   const localSrc = `${import.meta.env.BASE_URL}cards/${cardId}.webp`;
-  const [src, setSrc] = useState(localSrc);
+  const useCdn = missingLocalFor === cardId;
+  const src = useCdn ? cardImageUrl(imageHash) : localSrc;
 
   if (imageHash === '') {
     const missingClass = variant === 'band' ? 'art-band art-band--missing' : 'card-image card-image--missing';
@@ -38,8 +46,8 @@ export function CardImage({ cardId, imageHash, name, variant = 'full', className
       decoding="async"
       onError={() => {
         // 同梱画像が無い場合だけ公式CDNへ切り替える（無限ループ防止のため1回だけ）
-        if (src !== localSrc) return;
-        setSrc(cardImageUrl(imageHash));
+        if (useCdn) return;
+        setMissingLocalFor(cardId);
       }}
     />
   );
