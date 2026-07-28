@@ -41,6 +41,15 @@ writeFileSync(join(DIST, '.nojekyll'), '');
 // 履歴を持たせないので、画像を含んでもリポジトリが肥大しない。
 rmSync(join(DIST, '.git'), { recursive: true, force: true });
 run('git', ['init', '-b', BRANCH], DIST);
+
+// dist は独立したリポジトリなので、親の設定もグローバル設定も引き継がない。
+// 明示しないと個人のメールアドレスが公開ブランチのコミットに載る。
+const authorName = capture('git', ['config', 'user.name'], PROJECT_ROOT);
+const authorEmail = capture('git', ['config', 'user.email'], PROJECT_ROOT);
+run('git', ['config', 'user.name', authorName], DIST);
+run('git', ['config', 'user.email', authorEmail], DIST);
+console.log(`コミット者: ${authorName} <${authorEmail}>`);
+
 run('git', ['add', '-A'], DIST);
 run('git', ['commit', '-m', `deploy: ${new Date().toISOString()}`], DIST);
 run('git', ['push', '-f', remote, BRANCH], DIST);
