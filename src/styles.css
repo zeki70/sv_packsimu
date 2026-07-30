@@ -784,6 +784,29 @@ input[type="checkbox"] { accent-color: var(--color-accent); width: 1rem; height:
   font-size: .8125rem;
 }
 
+/* 完成したデッキを公式サイトで開くリンク（見た目はボタンにそろえる） */
+.deck-link {
+  display: inline-block;
+  flex: none;
+  margin-top: var(--space-xs);
+  padding: .45rem .9rem;
+  font-size: .875rem;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+  text-decoration: none;
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  transition: background-color .12s, border-color .12s;
+}
+.deck-link:hover,
+.deck-link:active {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+
 /* 追加開封で出たカード */
 .added {
   margin-bottom: var(--space-md);

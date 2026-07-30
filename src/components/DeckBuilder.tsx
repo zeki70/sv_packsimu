@@ -15,6 +15,7 @@ import {
 import { CardImage } from './CardImage';
 import { CardDetailModal } from './CardDetailModal';
 import { MouseGuide } from './MouseGuide';
+import { OfficialDeckLink } from './OfficialDeckLink';
 import type { LiteCard } from '../data/cardTypes';
 
 interface Props {
@@ -290,9 +291,12 @@ export function DeckBuilder({
           </ul>
 
           {validation?.valid === true && (
-            <p className="notice notice--done">
-              デッキ完成です。Shadowverse: Worlds Beyond のアプリで同じデッキを組んで対戦してください。
-            </p>
+            <>
+              <p className="notice notice--done">
+                デッキ完成です。Shadowverse: Worlds Beyond のアプリで同じデッキを組んで対戦してください。
+              </p>
+              <OfficialDeckLink deck={deck} classId={classId} />
+            </>
           )}
 
           {deckTotal > 0 && (

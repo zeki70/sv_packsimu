@@ -8,6 +8,7 @@ import { compareCards } from '../ui/poolSort';
 import type { Rarity } from '../domain/types';
 import { CardImage } from './CardImage';
 import { CardDetailModal } from './CardDetailModal';
+import { OfficialDeckLink } from './OfficialDeckLink';
 
 interface Props {
   readonly deck: Deck;
@@ -73,6 +74,7 @@ export function DeckPreviewModal({ deck, classId, onClose }: Props) {
           {total === DECK_SIZE
             ? 'このデッキを Shadowverse: Worlds Beyond のアプリで同じように組んで対戦してください。'
             : `あと ${DECK_SIZE - total} 枚です。40枚そろえたら、Shadowverse: Worlds Beyond のアプリで同じデッキを組んでください。`}
+          <OfficialDeckLink deck={deck} classId={classId} />
         </p>
 
         <div className="curve">
