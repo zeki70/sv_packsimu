@@ -5,6 +5,7 @@ import {
   basicPoolCards,
   buildSetIndex,
   latestPackSetIds,
+  packSetIds,
 } from '../data/cardDatabase';
 
 /** 既定で対象にする弾数 */
@@ -21,6 +22,7 @@ export const MAX_PACKS_PER_SET = 100;
 
 const SESSION_KEY = 'sv_packsimu_session';
 const DECK_KEY = 'sv_packsimu_deck';
+const SETUP_KEY = 'sv_packsimu_setup';
 
 export interface SealedConfig {
   readonly setIds: readonly number[];
@@ -43,6 +45,17 @@ export interface SavedDeck {
   readonly classId: number | null;
   /** cardId → 投入枚数 */
   readonly cards: Readonly<Record<number, number>>;
+}
+
+/**
+ * 設定画面の入力内容。開封をやり直しても前回選んだ弾とパック数を出しておくために保存する。
+ * シードは保存しない（毎回同じプールになってしまうため）。
+ */
+export interface SavedSetup {
+  readonly config: SealedConfig;
+  readonly presetId: string;
+  /** 保存した時点で存在したパック弾。新しい弾が出たかどうかの判定に使う */
+  readonly knownSetIds: readonly number[];
 }
 
 export function defaultConfig(): SealedConfig {
@@ -174,6 +187,55 @@ export function loadSession(): SealedSession | null {
 export const saveSession = (session: SealedSession): void => writeJson(SESSION_KEY, session);
 export const loadDeck = (): SavedDeck | null => readJson<SavedDeck>(DECK_KEY);
 export const saveDeck = (deck: SavedDeck): void => writeJson(DECK_KEY, deck);
+
+function isSealedConfig(value: unknown): value is SealedConfig {
+  const config = value as SealedConfig | null;
+  return (
+    config !== null &&
+    typeof config === 'object' &&
+    Array.isArray(config.setIds) &&
+    config.setIds.every((id) => typeof id === 'number') &&
+    typeof config.packCounts === 'object' &&
+    config.packCounts !== null &&
+    typeof config.includeBasic === 'boolean'
+  );
+}
+
+export function saveSetup(config: SealedConfig, presetId: string): void {
+  writeJson(SETUP_KEY, { config, presetId, knownSetIds: packSetIds() } satisfies SavedSetup);
+}
+
+/**
+ * 前回の設定内容。次のいずれかなら null を返し、呼び出し側は既定（最新6弾）に戻す。
+ *
+ * - 保存形式が壊れている
+ * - **カードDBに新しい弾が増えた** — 古い設定を残すと最新弾が外れたまま開封してしまう
+ * - 保存されていた弾がカードDBから消えた
+ */
+export function loadSetup(): SavedSetup | null {
+  const saved = readJson<SavedSetup>(SETUP_KEY);
+  if (saved === null) return null;
+
+  const discard = (): null => {
+    localStorage.removeItem(SETUP_KEY);
+    return null;
+  };
+
+  if (
+    !isSealedConfig(saved.config) ||
+    typeof saved.presetId !== 'string' ||
+    !Array.isArray(saved.knownSetIds)
+  ) {
+    return discard();
+  }
+
+  const known = new Set(saved.knownSetIds);
+  const current = new Set(packSetIds());
+  if (packSetIds().some((id) => !known.has(id))) return discard();
+  if (saved.config.setIds.some((id) => !current.has(id))) return discard();
+
+  return saved;
+}
 
 export function clearSession(): void {
   localStorage.removeItem(SESSION_KEY);

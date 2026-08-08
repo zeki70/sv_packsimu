@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { SealedSetup } from './components/SealedSetup';
 import { PoolView } from './components/PoolView';
 import { DeckBuilder } from './components/DeckBuilder';
@@ -45,6 +45,15 @@ export function App() {
   const [addedCards, setAddedCards] = useState<readonly OpenedCard[]>([]);
 
   const deckTotal = [...deck.values()].reduce((sum, n) => sum + n, 0);
+
+  /**
+   * 画面を切り替えたら先頭に戻す。
+   * 前の画面のスクロール位置が残ると、遷移先の途中から表示されて見出しが見えなくなる。
+   * session も見ているのは、追加開封（プール画面のまま中身が変わる）を拾うため。
+   */
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0 });
+  }, [view, session]);
 
   // プールはシードと設定から決まるので、保存せず毎回再生成する
   const poolResult = useMemo(() => (session === null ? null : buildPoolFor(session)), [session]);

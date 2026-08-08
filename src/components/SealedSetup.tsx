@@ -4,6 +4,8 @@ import {
   DEFAULT_PACKS_PER_SET,
   MAX_PACKS_PER_SET,
   defaultConfig,
+  loadSetup,
+  saveSetup,
   totalPackCount,
   type SealedConfig,
 } from '../session/sealedSession';
@@ -14,25 +16,28 @@ interface Props {
 }
 
 export function SealedSetup({ onStart }: Props) {
-  const [config, setConfig] = useState<SealedConfig>(defaultConfig);
+  // 前回の設定を初期値にする。新しい弾が出たあとは null が返り、最新弾の既定に戻る
+  const [saved] = useState(loadSetup);
+  const [config, setConfig] = useState<SealedConfig>(() => saved?.config ?? defaultConfig());
   const [seedText, setSeedText] = useState('');
-  const [presetId, setPresetId] = useState('default');
+  const [presetId, setPresetId] = useState(() => saved?.presetId ?? 'default');
 
   const allSets = packSetIds();
   const selected = new Set(config.setIds);
   const total = totalPackCount(config);
   const activePreset = PRESETS.find((p) => p.id === presetId);
 
-  const applyPreset = (preset: SealedPreset): void => {
-    setPresetId(preset.id);
-    setConfig(preset.build());
+  /** 設定を変えたら都度保存する。開封を始めなくても次回に引き継がれる */
+  const commit = (next: SealedConfig, nextPresetId: string): void => {
+    setConfig(next);
+    setPresetId(nextPresetId);
+    saveSetup(next, nextPresetId);
   };
 
+  const applyPreset = (preset: SealedPreset): void => commit(preset.build(), preset.id);
+
   /** 手で触ったらプリセットの表示を外す。中身と表示がずれないようにするため */
-  const updateConfig = (next: SealedConfig): void => {
-    setConfig(next);
-    setPresetId('custom');
-  };
+  const updateConfig = (next: SealedConfig): void => commit(next, 'custom');
 
   const toggleSet = (setId: number): void => {
     const next = selected.has(setId)

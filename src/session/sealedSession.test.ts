@@ -1,19 +1,24 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   DEFAULT_PACKS_PER_SET,
   DEFAULT_SET_COUNT,
   MAX_PACKS_PER_SET,
   buildPoolFor,
+  clearSession,
   createSession,
   defaultConfig,
   addedOpenedCards,
+  loadSetup,
+  saveSetup,
   totalPackCount,
   withExtraPacks,
+  type SealedConfig,
+  type SavedSetup,
 } from './sealedSession';
 import { DECK_SIZE, maxCopiesOf, validateDeck, type Deck } from '../domain/deckRules';
 import { poolCardsForClass } from '../domain/pool';
 import { CARDS_PER_PACK } from '../domain/rates';
-import { latestPackSetIds } from '../data/cardDatabase';
+import { latestPackSetIds, packSetIds } from '../data/cardDatabase';
 import { CLASSES } from '../ui/labels';
 
 describe('既定設定', () => {
@@ -216,5 +221,67 @@ describe('シールド戦の通し検証（実カードデータ）', () => {
       ),
     );
     expect(Math.max(...usable)).toBeLessThan(DECK_SIZE);
+  });
+});
+
+describe('設定画面の保存（sv_packsimu_setup）', () => {
+  // vitest は environment: 'node' なので localStorage を自前で用意する
+  const install = (): Map<string, string> => {
+    const store = new Map<string, string>();
+    const stub: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> = {
+      getItem: (key) => store.get(key) ?? null,
+      setItem: (key, value) => void store.set(key, value),
+      removeItem: (key) => void store.delete(key),
+    };
+    (globalThis as { localStorage?: unknown }).localStorage = stub;
+    return store;
+  };
+
+  beforeEach(() => {
+    install();
+  });
+
+  it('保存していなければ null（呼び出し側が既定に戻す）', () => {
+    expect(loadSetup()).toBeNull();
+  });
+
+  it('保存した弾とパック数がそのまま戻る', () => {
+    const config: SealedConfig = {
+      setIds: [packSetIds()[0]!],
+      packCounts: { [packSetIds()[0]!]: 30 },
+      includeBasic: true,
+    };
+    saveSetup(config, 'custom');
+
+    const saved = loadSetup();
+    expect(saved?.config).toEqual(config);
+    expect(saved?.presetId).toBe('custom');
+  });
+
+  it('新しい弾が追加されたら破棄する（最新弾が外れたまま開封しないため）', () => {
+    saveSetup(defaultConfig(), 'default');
+
+    // カードDBに無い弾しか知らなかった＝あとから今の弾が増えた、という状況を作る
+    const stale: SavedSetup = {
+      config: defaultConfig(),
+      presetId: 'default',
+      knownSetIds: packSetIds().slice(0, -1),
+    };
+    localStorage.setItem('sv_packsimu_setup', JSON.stringify(stale));
+
+    expect(loadSetup()).toBeNull();
+    expect(localStorage.getItem('sv_packsimu_setup')).toBeNull();
+  });
+
+  it('保存形式が壊れていたら破棄する', () => {
+    localStorage.setItem('sv_packsimu_setup', '{"config":{"setIds":"nope"}}');
+    expect(loadSetup()).toBeNull();
+    expect(localStorage.getItem('sv_packsimu_setup')).toBeNull();
+  });
+
+  it('開封のやり直し（clearSession）では消えない', () => {
+    saveSetup(defaultConfig(), 'default');
+    clearSession();
+    expect(loadSetup()).not.toBeNull();
   });
 });

@@ -265,6 +265,12 @@ npm run sync:cards && npm run sync:images
 
 - `sv_packsimu_session` — シードと開封設定
 - `sv_packsimu_deck` — classId と cardId→枚数
+- `sv_packsimu_setup` — 設定画面の入力内容（弾・パック数・プリセット）。開封をやり直しても残す
+
+設定画面は前回の選択を初期値にする（`loadSetup` / `saveSetup`）。**シードは保存しない**
+（毎回同じプールになってしまうため）。保存時のパック弾一覧を `knownSetIds` に持っておき、
+**カードDBに新しい弾が増えていたら保存内容を破棄して既定（最新6弾）に戻す**。
+古い設定を残すと、新弾が外れたまま開封してしまう。
 
 ## UI の約束事
 
