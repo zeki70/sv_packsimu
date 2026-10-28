@@ -72,13 +72,14 @@ SVCardEntry = { common: SVCardData, evo?: SVEvoData, specific_effects?: Specific
 | 10007 | 神殺し・アナテマ | 77 |
 | 10008 | クロニクル・オブ・デスティニー | 78 |
 | 10009 | アズヴォルト・レヴナント | 76 |
-| 90000 | （トークン93枚） | 対象外 |
+| 10010 | ニーゲルヘリア神殺事件 | 76 |
+| 90000 | （トークン95枚） | 対象外 |
 
-軽量DB `src/data/cards.json` は **904枚 / 539KB**（うちトークン93枚は閲覧用。フレーバーテキスト除去済み）。
-パック排出・デッキ構築の対象は非トークンの **811枚**。
+軽量DB `src/data/cards.json` は **982枚 / 607KB**（うちトークン95枚は閲覧用。フレーバーテキスト除去済み）。
+パック排出・デッキ構築の対象は非トークンの **887枚**。
 
 > 「最新6弾」を弾IDのハードコードで書かないこと。`card_set_id` の降順から動的に決める
-> （`latestPackSetIds()`）。実際、10008・10009 を追加したときコード変更ゼロで追随できた。
+> （`latestPackSetIds()`）。実際、10008〜10010 を追加したときコード変更ゼロで追随できた。
 
 ## シールド戦ルール（本アプリの独自定義）
 
@@ -186,7 +187,7 @@ https://shadowverse-wb.com/ja/deck/detail/?hash=2.2.fIck.cEc-.…&lang=ja
 
 実測: 公式原寸は 530×687 PNG・平均562KB。全1459枚で786MB あり、**原寸同梱は GitHub Pages の1GB上限に対して不可**。
 
-- 一覧・デッキ構築・開封演出 → `public/cards/<cardId>.webp`（300px幅・q80）。**実測 904枚で28MB**
+- 一覧・デッキ構築・開封演出 → `public/cards/<cardId>.webp`（300px幅・q80）。**実測 982枚で30MB**
 - カード詳細の拡大表示のみ → `https://shadowverse-wb.com/uploads/card_image/jpn/card/<hash>.png`
 - **ファイル名は `imageHash` ではなく `cardId`**。scraper の `images/common/<cardId>.png` に合わせている
 - 生成は `npm run sync:images`（sharp を使用）。**公式CDNから直接取得する**
@@ -212,7 +213,7 @@ sv_packsimu/
 ├── scripts/
 │   ├── syncCardData.ts   ← scraper の master JSON → 軽量版に間引いて src/data/cards.json へ
 │   └── buildImages.ts    ← 原寸PNG → 300px WebP 変換（sharp）
-├── public/cards/         ← 縮小WebP（<cardId>.webp、904枚 28MB）
+├── public/cards/         ← 縮小WebP（<cardId>.webp、982枚 30MB）
 ├── src/
 │   ├── domain/           ← 純粋ロジック。React非依存・全てテスト済み
 │   │   ├── types.ts      ← Rarity / PoolCard / OpenedCard / SetCardIndex
